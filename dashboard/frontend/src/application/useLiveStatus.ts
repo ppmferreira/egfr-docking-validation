@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Live } from '../domain/entities'
-import { useGateway } from './GatewayContext'
+import { useGateway } from './servicesContext'
 
 /** Polls jobs, GPU and log tails every 2 s while the component using it is mounted. */
 export function useLiveStatus(): Live | null {

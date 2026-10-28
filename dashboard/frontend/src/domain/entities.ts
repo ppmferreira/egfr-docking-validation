@@ -14,7 +14,9 @@ export interface SweepRow {
   top_rmsd: number; top_pass: boolean; best_rmsd: number
 }
 export interface DockRow { chembl_id: string; vina_score_kcal_mol: number; pIC50: number; ic50_nM: number; MW: number; logP: number }
-export interface Step { id: string; name: string; done: boolean }
+export type StepStatus = 'done' | 'running' | 'pending'
+/** One stage of the analysis pipeline, as reported by the backend from the files each script writes. */
+export interface Step { id: string; name: string; script: string; status: StepStatus; progress: { done: number; total: number } | null }
 export interface Activity { file: string; age: number; kb: number }
 
 export interface BlindSelected { pdb: string; comp: string; name: string; heavy_atoms: number; resolution: number; mw: number }
@@ -41,7 +43,7 @@ export interface LogTail { file: string; age: number; tail: string[] }
 export interface Live { jobs: Job[]; gpu: Gpu | null; logs: LogTail[] }
 
 export interface DiffDockPose { rank: number; confidence: number | null; rmsd: number; mol: string }
-export interface VinaPose { pose: number; score: number; rmsd: number; mol: string }
+export interface VinaPose { seed: number; pose: number; score: number; rmsd: number; mol: string }
 export interface ComplexDetail {
   pdb: string; ligand: string; protein: string; crystal: string; center: [number, number, number]
   has_traj: boolean; diffdock: DiffDockPose[]; vina: VinaPose[]

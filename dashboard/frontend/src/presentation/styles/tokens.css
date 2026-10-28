@@ -1,7 +1,7 @@
-/* Design tokens: colours and fonts. Components read these through var(--...); nothing else defines colours. */
+/* Design tokens: the only place colours and fonts are defined. Tailwind utilities (bg-panel, text-muted, ...) read these. */
 :root {
   --paper: #f3f5f6; --panel: #fff; --ink: #17232b; --muted: #5d6c76; --line: #d5dce0;
-  --crystal: #b8650a; --docked: #0b7c8c; --pass: #1d7a45; --fail: #a8382e; --warn: #9a6a00; --stage: #0f1a21;
+  --docked: #0b7c8c; --pass: #1d7a45; --fail: #a8382e; --warn: #9a6a00; --vina: #b04a86; --crystal: #b8650a; --stage: #0f1a21;
   --font-body: "Instrument Sans", system-ui, sans-serif; --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
@@ -9,6 +9,6 @@
   :root {
     color-scheme: dark;
     --paper: #11181d; --panel: #18222a; --ink: #e6edf0; --muted: #93a3ad; --line: #2b3943;
-    --crystal: #f0a04b; --docked: #46c2d3; --pass: #54c283; --fail: #ef7f72; --warn: #e0b23c; --stage: #0a1116;
+    --docked: #46c2d3; --pass: #54c283; --fail: #ef7f72; --warn: #e0b23c; --vina: #d96fb0; --crystal: #f0a04b; --stage: #0a1116;
   }
 }

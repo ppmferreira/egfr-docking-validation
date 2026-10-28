@@ -1,0 +1,48 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Expose the tokens as Tailwind colours and fonts. `inline` keeps them as live var() references,
+   so the dark palette in tokens.css applies without any `dark:` variants. */
+@theme inline {
+  --color-paper: var(--paper);
+  --color-panel: var(--panel);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-docked: var(--docked);
+  --color-pass: var(--pass);
+  --color-fail: var(--fail);
+  --color-warn: var(--warn);
+  --color-vina: var(--vina);
+  --color-crystal: var(--crystal);
+  --color-stage: var(--stage);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { @apply bg-paper font-sans text-[14px] leading-[1.55] text-ink antialiased; }
+  a { @apply underline decoration-line underline-offset-[3px]; }
+  a:focus-visible, button:focus-visible, summary:focus-visible, [tabindex]:focus-visible { @apply outline-2 outline-offset-2 outline-docked; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+}
+
+@theme {
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-spin-slow: spin 1.6s linear infinite;
+  @keyframes accordion-down { from { height: 0; } to { height: var(--radix-accordion-content-height); } }
+  @keyframes accordion-up { from { height: var(--radix-accordion-content-height); } to { height: 0; } }
+}
+
+/* Data tables in the results screens. */
+@layer components {
+  .data-table { @apply w-full border-collapse tabular-nums; }
+  .data-table th { @apply px-3.5 py-2 text-right font-mono text-[11px] font-medium tracking-wide whitespace-nowrap text-muted; }
+  .data-table td { @apply border-t border-line px-3.5 py-2 text-right font-mono text-[13px] whitespace-nowrap; }
+  .data-table th:first-child, .data-table td:first-child { @apply text-left; }
+  .data-table.prose-cells th, .data-table.prose-cells td { @apply text-left font-sans text-[13.5px] whitespace-normal align-top; }
+  .data-table.prose-cells th { @apply font-semibold text-ink; }
+  .data-table.prose-cells td:first-child { @apply text-muted; }
+}

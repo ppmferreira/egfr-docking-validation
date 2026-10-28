@@ -5,7 +5,6 @@ import { Page } from '../../ui/Layout'
 import { Note } from '../../ui/Text'
 import { ComplexHeader } from './ComplexHeader'
 import { ComplexList } from './ComplexList'
-import styles from './ComplexesPage.module.css'
 import { MethodNotes } from './MethodNotes'
 import { PoseChips } from './PoseChips'
 import { ResultsBanner } from './ResultsBanner'
@@ -27,16 +26,17 @@ export default function ComplexesPage({ data, running }: { data: Dashboard; runn
   return (
     <Page>
       <ResultsBanner entries={x.entries} running={running} />
-      <div className={styles.work}>
+      <div className="grid grid-cols-[300px_minmax(0,1fr)] items-start gap-4 max-[1180px]:grid-cols-1">
         <ComplexList entries={x.entries} current={x.current} onPick={x.pick} />
-        <div className={styles.main}>
+        <div className="grid min-w-0 gap-3">
           {x.entry && <ComplexHeader entry={x.entry} />}
           {x.failed && <Box padded><Note>Não foi possível montar este complexo (a estrutura do ligante não pôde ser reconstruída).</Note></Box>}
           {detail && (
             <>
-              <StructureViewer detail={detail} layers={x.layers} ddRank={x.ddRank} vinaPose={x.vinaPose}
+              <StructureViewer detail={detail} layers={x.layers} ddRank={x.ddRank} vinaSeed={x.vinaSeed} vinaPose={x.vinaPose}
                 trajectory={player.text} frame={player.frame} hint={player.text ? ANIMATION_HINT : HINT} onLayer={x.toggleLayer} />
-              <PoseChips detail={detail} ddRank={x.ddRank} vinaPose={x.vinaPose} onDiffDock={x.chooseDiffDock} onVina={x.chooseVina} />
+              <PoseChips detail={detail} ddRank={x.ddRank} vinaSeed={x.vinaSeed} vinaPose={x.vinaPose}
+                onDiffDock={x.chooseDiffDock} onSeed={x.chooseSeed} onVina={x.chooseVina} />
               {detail.has_traj && (
                 <TrajectoryPlayer playing={player.playing} total={player.total} frame={player.frame} label={playerLabel}
                   onToggle={player.toggle} onSeek={player.seek} />
