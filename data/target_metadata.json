@@ -1,0 +1,16 @@
+{
+  "pdb_id": "1M17",
+  "bound_ligand": "AQ4 (erlotinib)",
+  "ligand_atoms_used": 29,
+  "center_angstrom": [
+    22.014,
+    0.253,
+    52.794
+  ],
+  "box_size_angstrom": [
+    22,
+    22,
+    22
+  ],
+  "note": "Provisional box centered on AQ4; receptor MUST be chemically prepared and protocol validated."
+}

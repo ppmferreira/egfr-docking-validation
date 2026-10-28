@@ -1,0 +1,7 @@
+pdb,ligand,box_A,mean_top_rmsd,top_pass,n,mean_best_rmsd,mean_best_rank
+1M17,erlotinib,20,3.92,2,3,1.78,2.67
+1M17,erlotinib,22,7.16,0,3,1.71,3.33
+1XKK,lapatinib,20,2.91,0,3,1.76,5.67
+1XKK,lapatinib,22,2.92,0,3,1.36,6.0
+4WKQ,gefitinib,20,2.51,0,3,2.36,3.0
+4WKQ,gefitinib,22,2.53,0,3,2.53,1.0
