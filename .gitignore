@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# OS / WSL
+*:Zone.Identifier
+.DS_Store
+
+# Dashboard frontend
+dashboard/frontend/node_modules/
+dashboard/frontend/dist/
+
+# Data: raw downloads and generated structures are reproducible from scripts/
+# Only small curated tables are versioned.
+data/*
+!data/.gitkeep
+!data/egfr_activities_filtered.csv
+!data/egfr_compounds_curated.csv
+!data/egfr_box.txt
+!data/target_metadata.json
+
+# Results: versioned summary tables only; heavy per-run outputs and logs are not.
+results/*
+!results/.gitkeep
+!results/*.csv
+
+# Figures are versioned (portfolio material)

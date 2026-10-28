@@ -1,0 +1,15 @@
+name: egfr-vs
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - rdkit
+  - pandas
+  - matplotlib
+  - requests
+  - pytest
+  - vina
+  - meeko
+  - openbabel
+  - fastapi
+  - uvicorn
