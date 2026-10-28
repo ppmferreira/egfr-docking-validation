@@ -42,7 +42,7 @@ def box_from_crystal():
     f.write_text(json.dumps(box)); return box
 
 
-def score_ligand(row, box, cpu, work):
+def score_ligand(row, box, cpu, work, scoring='vina'):
     mol = Chem.AddHs(Chem.MolFromSmiles(row['smiles']))
     p = AllChem.ETKDGv3(); p.randomSeed = 42
     if AllChem.EmbedMolecule(mol, p) != 0:
@@ -61,7 +61,7 @@ def score_ligand(row, box, cpu, work):
     try:
         subprocess.run(['vina', '--receptor', str(RECEPTOR), '--ligand', str(lig), '--center_x', str(c[0]), '--center_y', str(c[1]),
                         '--center_z', str(c[2]), '--size_x', '20', '--size_y', '20', '--size_z', '20', '--out', str(res),
-                        '--seed', '42', '--exhaustiveness', '8', '--num_modes', '3', '--cpu', str(cpu)],
+                        '--seed', '42', '--exhaustiveness', '8', '--num_modes', '3', '--cpu', str(cpu), '--scoring', scoring],
                        check=True, capture_output=True, text=True, timeout=900)
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
         return {'status': f'vina_failed: {str(exc)[:60]}'}
@@ -75,13 +75,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--workers', type=int, default=3)
     ap.add_argument('--cpu', type=int, default=4)
+    ap.add_argument('--scoring', choices=['vina', 'vinardo', 'ad4'], default='vina', help='Vina scoring function (default: vina)')
+    ap.add_argument('--out', type=Path, default=OUT, help='results CSV (default: results/enrichment_scores.csv)')
     ap.add_argument('--limit', type=int, help='dock only the first N ligands of the shuffled list (for a test)')
     args = ap.parse_args()
     parts = [pd.read_csv(DATA / 'chembl_actives_inactives.csv'), pd.read_csv(DATA / 'decoys.csv')]
     lib = pd.concat(parts, ignore_index=True)
     lib['uid'] = lib.label + '_' + lib.chembl_id.astype(str)
     lib = lib.sample(frac=1, random_state=42).reset_index(drop=True)
-    done = set(pd.read_csv(OUT).uid) if OUT.is_file() else set()
+    out = args.out
+    done = set(pd.read_csv(out).uid) if out.is_file() else set()
     todo = lib[~lib.uid.isin(done)]
     if args.limit:
         todo = todo.head(args.limit)
@@ -93,13 +96,13 @@ def main():
     def job(r):
         row = r._asdict() if hasattr(r, '_asdict') else dict(r)
         try:
-            res = score_ligand(row, box, args.cpu, work)
+            res = score_ligand(row, box, args.cpu, work, args.scoring)
         except Exception as exc:
             res = {'status': f'error: {str(exc)[:60]}'}
         rec = {'uid': row['uid'], 'chembl_id': row['chembl_id'], 'label': row['label'], 'smiles': row['smiles'],
                'heavy_atoms': row['heavy_atoms'], 'MW': row['MW'], 'logP': row['logP'], 'RotB': row['RotB'], **res}
         with LOCK:
-            pd.DataFrame([rec]).to_csv(OUT, mode='a', header=not OUT.is_file(), index=False)
+            pd.DataFrame([rec]).to_csv(out, mode='a', header=not out.is_file(), index=False)
             n[0] += 1
             print(f'[{n[0]}/{len(todo)}] {rec["uid"]} {rec.get("vina_score", rec["status"])}  ({(time.time() - t0) / n[0]:.1f} s each)', flush=True)
 

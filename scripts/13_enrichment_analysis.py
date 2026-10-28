@@ -70,10 +70,15 @@ def roc(y, s):
 
 
 def main():
-    df = pd.read_csv(ROOT / 'results' / 'enrichment_scores.csv')
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--scores', type=Path, default=ROOT / 'results' / 'enrichment_scores.csv', help='docking scores CSV from 12_enrichment_dock.py')
+    ap.add_argument('--tag', default='', help='suffix for the output files and title, e.g. vinardo (default: the original Vina run)')
+    args = ap.parse_args()
+    suffix, label = (f'_{args.tag}', f'{args.tag} scoring') if args.tag else ('', 'Vina')
+    df = pd.read_csv(args.scores)
     status = df.groupby('label').status.apply(lambda s: f'{(s == "ok").sum()} docked, {(s != "ok").sum()} failed').to_dict()
     ok = df[df.status == 'ok'].copy()
-    out = ['# Enrichment results (Vina, receptor 9BY4)', '', f'Docking outcome by class: {status}', '']
+    out = [f'# Enrichment results ({label}, receptor 9BY4)', '', f'Docking outcome by class: {status}', '']
     tasks = {'A: actives vs decoys': ['decoy'], 'B: actives vs measured inactives': ['inactive'],
              'C: actives vs inactives + decoys': ['inactive', 'decoy']}
     fig, axes = plt.subplots(1, 3, figsize=(13, 4.1)); store = {}
@@ -102,10 +107,10 @@ def main():
     ax.set_ylabel('Vina score (kcal/mol)'); ax.set_title('Score by class (more negative = better)', loc='left', fontsize=10, fontweight='bold')
     for a in axes:
         a.spines[['top', 'right']].set_visible(False)
-    fig.tight_layout(); fig.savefig(ROOT / 'figures' / 'enrichment.png', dpi=200, bbox_inches='tight')
+    fig.tight_layout(); fig.savefig(ROOT / 'figures' / f'enrichment{suffix}.png', dpi=200, bbox_inches='tight')
     corr = ok[['vina_score', 'heavy_atoms']].corr(method='spearman').iloc[0, 1]
     out += [f'Spearman correlation between Vina score and heavy-atom count (all docked compounds): {corr:+.2f}', '']
-    (ROOT / 'results' / 'enrichment_tables.md').write_text('\n'.join(out))
+    (ROOT / 'results' / f'enrichment_tables{suffix}.md').write_text('\n'.join(out))
     print('\n'.join(out))
 
 
