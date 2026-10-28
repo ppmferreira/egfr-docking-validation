@@ -13,6 +13,7 @@ Este repositório é o projeto de portfólio de Pedro sobre EGFR (virtual screen
    cd ../egfr_worktrees/<tipo>-<assunto>
    ```
 
+   Atalho: `tools/git/new-task.sh <tipo> <assunto>` faz isso (e `tools/git/finish-task.sh <tipo>/<assunto>` limpa tudo depois do merge). `tools/git/sync-main.sh` atualiza a `main` local sem sobrescrever nada. Uma vez por clone, rode `tools/git/setup.sh` para ativar os hooks que bloqueiam commit e push direto na `main`.
    Tipos: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`. Antes de criar, rode `git worktree list` para ver o que já está em andamento e não reutilize a branch de outra sessão.
 3. **Commite com frequência**, em commits pequenos e com uma mudança lógica cada. Mensagens no formato Conventional Commits (`feat: ...`, `fix: ...`), no imperativo, explicando o porquê quando não for óbvio.
 4. **Suba para o GitHub sempre**: ao terminar uma etapa (e no fim da sessão), `git push -u origin <branch>` e abra um pull request para a `main` com `gh pr create`. Não deixe trabalho só no disco.

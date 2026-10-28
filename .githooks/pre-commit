@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Bloqueia commits diretos na main: o trabalho acontece em worktrees/branches e entra por PR.
+branch="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$branch" = "main" ] && [ -z "${ALLOW_MAIN:-}" ]; then
+  echo "Commit na main bloqueado. Crie uma worktree: tools/git/new-task.sh <tipo> <assunto>" >&2
+  echo "(Excecao consciente: ALLOW_MAIN=1 git commit ...)" >&2
+  exit 1
+fi
