@@ -17,8 +17,9 @@ Este repositório é o projeto de portfólio de Pedro sobre EGFR (virtual screen
    Tipos: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`. Antes de criar, rode `git worktree list` para ver o que já está em andamento e não reutilize a branch de outra sessão.
 3. **Uma branch por frente de trabalho, não por mudança.** Uma branch/PR cobre uma funcionalidade, etapa ou tema inteiro (por exemplo "análise de enriquecimento" ou "refactor do dashboard") e acumula vários commits. Não abra um PR para cada ajuste pequeno: agrupe na branch da frente que já está aberta. Só crie outra branch quando o assunto for realmente independente.
    **Commite com frequência**, em commits pequenos e com uma mudança lógica cada. Mensagens no formato Conventional Commits (`feat: ...`, `fix: ...`), no imperativo, explicando o porquê quando não for óbvio.
-4. **Suba para o GitHub sempre**: dê `git push` da branch a cada bloco de commits e no fim da sessão, para o trabalho não ficar só no disco. Abra o pull request (`gh pr create`) quando a frente estiver num ponto que vale revisar e mesclar, e continue empurrando commits para o mesmo PR até ele fechar.
-5. **A `main` só recebe mudanças por pull request.** Não faça merge nem push direto na `main`, a não ser que o Pedro peça. Depois do merge, remova a worktree (`git worktree remove <caminho>`) e apague a branch.
+4. **Suba a branch para o GitHub sempre**: dê `git push` da branch a cada bloco de commits e no fim da sessão, para o trabalho não ficar só no disco.
+   **Nunca abra pull request por conta própria.** Agentes só fazem commit e push da branch. Quem manda abrir (ou não) o PR é o Pedro; só rode `gh pr create` quando ele pedir. Se ele pedir, continue empurrando commits para o mesmo PR até ele fechar.
+5. **A `main` só recebe mudanças por pull request, aberto e mesclado quando o Pedro mandar.** Não faça merge nem push direto na `main`, a não ser que o Pedro peça. Depois do merge, remova a worktree (`git worktree remove <caminho>`) e apague a branch.
 
 ## Manter a `main` local sincronizada
 
