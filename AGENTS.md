@@ -18,6 +18,15 @@ Este repositório é o projeto de portfólio de Pedro sobre EGFR (virtual screen
 4. **Suba para o GitHub sempre**: ao terminar uma etapa (e no fim da sessão), `git push -u origin <branch>` e abra um pull request para a `main` com `gh pr create`. Não deixe trabalho só no disco.
 5. **A `main` só recebe mudanças por pull request.** Não faça merge nem push direto na `main`, a não ser que o Pedro peça. Depois do merge, remova a worktree (`git worktree remove <caminho>`) e apague a branch.
 
+## Manter a `main` local sincronizada
+
+A pasta principal serve só para acompanhar a `main`: ela fica **sempre** na branch `main`, **sem alterações próprias**, e igual à `origin/main`.
+
+- **No início de toda sessão:** `git fetch origin` e, na pasta principal, `git pull --ff-only` (só avança, nunca cria merge nem sobrescreve).
+- **Depois de cada merge de PR:** repita o `git pull --ff-only` na pasta principal.
+- **Branches em andamento:** em cada worktree, `git fetch origin && git rebase origin/main` com frequência, para a branch não ficar velha. Se a `main` mudou no meio do trabalho, atualize antes de abrir ou atualizar o PR.
+- Se o `git pull --ff-only` falhar porque há alterações na pasta principal, **não** use stash, reset nem checkout para "resolver": isso pode apagar o trabalho de outra sessão. Avise o Pedro.
+
 ## O que nunca fazer
 
 - `git push --force`, `git reset --hard`, `git clean -fd`, `git checkout .` ou qualquer comando que descarte trabalho que você não criou.
