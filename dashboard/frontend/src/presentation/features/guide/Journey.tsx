@@ -27,8 +27,8 @@ export function Journey({ f, onGo }: { f: Findings; onGo: (t: TabId) => void }) 
   if (lib) steps.push({
     title: 'Teste de enriquecimento', script: '10_enrichment_data.py → 13_enrichment_analysis.py',
     what: 'A pergunta final: o score do Vina separa moléculas ativas de inativas? Montamos ativos e inativos medidos do ChEMBL, mais decoys, e docamos todos no mesmo receptor.',
-    result: lib.status === 'done' ? 'Docking concluído; falta a análise (ROC AUC, EF1%).' : lib.total ? <>Docking da biblioteca em andamento: <b>{lib.done} de {lib.total}</b> moléculas.</> : 'Biblioteca em preparação.',
-    running: lib.status === 'running' && lib.total ? { done: lib.done, total: lib.total } : undefined, go: ['next', 'Ver os próximos passos'],
+    result: f.ranking ? <>{f.ranking.nActives} ativos contra {f.ranking.nDecoys} decoys: AUC <b>{f2(f.ranking.aucDecoys)}</b> (acaso = 0,50). Contra {f.ranking.nInactives} inativos medidos, contar átomos ({f2(f.ranking.sizeInactives)}) supera o Vina ({f2(f.ranking.vsInactives)}). O ranking pelo score não funciona neste protocolo.</> : lib.status === 'done' ? 'Docking concluído; falta a análise (ROC AUC, EF1%).' : lib.total ? <>Docking da biblioteca em andamento: <b>{lib.done} de {lib.total}</b> moléculas.</> : 'Biblioteca em preparação.',
+    running: lib.status === 'running' && lib.total ? { done: lib.done, total: lib.total } : undefined, go: ['enrich', 'Ver o enriquecimento'],
   })
   return (
     <PageSection id="jornada" title="O que já foi feito, em ordem" intro="Cada passo nasceu do resultado do anterior. Os números vêm dos arquivos de resultado e se atualizam sozinhos.">

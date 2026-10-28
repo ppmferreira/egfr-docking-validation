@@ -26,6 +26,17 @@ export interface Findings {
   tally: { pdb: string; group: 'train' | 'blind'; lig: string; dd: number; ddHit: boolean; vina: number; vinaHit: boolean }[]
   /** Docking of the actives / inactives / decoys library (stage 12), when it exists. */
   enrichment: { status: StepStatus; done: number; total: number } | null
+  /** Result of the ranking test (stage 13): AUC of Vina against decoys and against measured inactives, with the size-only baseline. */
+  ranking: { aucDecoys: number; lo: number; hi: number; vsInactives: number; sizeInactives: number; nActives: number; nDecoys: number; nInactives: number } | null
+}
+
+function summarizeRanking(d: Dashboard): Findings['ranking'] {
+  const a = d.enrichment?.tasks[0], b = d.enrichment?.tasks[1]
+  if (!a || !b) return null
+  return {
+    aucDecoys: a.scorers[0].auc, lo: a.scorers[0].lo, hi: a.scorers[0].hi,
+    vsInactives: b.scorers[0].auc, sizeInactives: b.scorers[2].auc, nActives: a.n_pos, nDecoys: a.n_neg, nInactives: b.n_neg,
+  }
 }
 
 export function summarizeFindings(d: Dashboard): Findings {
@@ -70,5 +81,6 @@ export function summarizeFindings(d: Dashboard): Findings {
       const st = d.steps.find(x => x.id === '12')
       return st ? { status: st.status, done: st.progress?.done ?? 0, total: st.progress?.total ?? 0 } : null
     })(),
+    ranking: summarizeRanking(d),
   }
 }

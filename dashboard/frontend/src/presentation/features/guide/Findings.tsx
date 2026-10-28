@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Gauge, History, TriangleAlert } from 'lucide-react'
+import { ArrowLeftRight, Gauge, History, TriangleAlert, TrendingDown } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { TabId } from '../../../application/routes'
 import type { Findings as FindingsData } from '../../../domain/findings'
@@ -37,9 +37,16 @@ export function Findings({ f, onGo }: { f: FindingsData; onGo: (t: TabId) => voi
           Acertou {train.diffdock} de {train.n} nos clássicos e {blind.diffdock} de {blind.n} nos novos. Errou: <b>{list(blindMisses.diffdock)}</b>. O Vina errou: <b>{list(blindMisses.vina)}</b>.
           {blindMisses.diffdock.some(x => blindMisses.vina.includes(x)) && <> Quando os dois erram o mesmo complexo, vale abrir o 3D para ver o que há de diferente nele.</>}
         </Finding>
+        {f.ranking && (
+          <Finding icon={<TrendingDown />} title="O score do Vina não separa ativos de decoys">
+            Com {f.ranking.nActives} ativos e {f.ranking.nDecoys} decoys de propriedades parecidas, a AUC foi <b>{f2(f.ranking.aucDecoys)}</b> (IC 95% {f2(f.ranking.lo)} a {f2(f.ranking.hi)}); 0,50 é o acaso.
+            Contra inativos medidos, o número de átomos sozinho ({f2(f.ranking.sizeInactives)}) vence o Vina ({f2(f.ranking.vsInactives)}), porque os inativos são menores. Em resumo: <b>boas poses não geraram um bom ranking</b>.
+            <button type="button" onClick={() => onGo('enrich')} className="ml-1 cursor-pointer bg-transparent p-0 text-docked underline underline-offset-[3px]">Ver as curvas</button>
+          </Finding>
+        )}
         <Finding icon={<History />} title="Acertar o encaixe não basta para ordenar moléculas">
           Mesmo com o Vina acertando muitos encaixes, o score dele quase não acompanha a potência medida em laboratório (ρ = {f.compounds.spearman === null ? '–' : f2(f.compounds.spearman)} em {f.compounds.n} moléculas).
-          O teste de pose responde se o programa coloca a molécula no lugar certo; ordenar por potência é outra pergunta, que o teste de enriquecimento tenta responder.
+          O teste de pose responde se o programa coloca a molécula no lugar certo; ordenar por potência é outra pergunta, respondida pelo teste de enriquecimento.
         </Finding>
       </div>
       <div className="rounded-lg border border-warn/60 bg-warn/5 p-4">
@@ -52,7 +59,8 @@ export function Findings({ f, onGo }: { f: FindingsData; onGo: (t: TabId) => voi
           <li><b>Comparação desigual.</b> O Vina recebe o bolsão e o DiffDock não. Não dá para dizer que um método é melhor que o outro em geral.</li>
           <li><b>Memória do DiffDock.</b> Nos clássicos o acerto pode ser parcialmente memorização; só os cegos descartam isso.</li>
           <li><b>Receptor simplificado.</b> Usamos só a cadeia A de cada estrutura e, na maioria dos testes, sem águas.</li>
-          <li><b>Potência.</b> Os scores dos 16 compostos ainda não ordenam moléculas de forma útil.</li>
+          <li><b>Potência.</b> Os scores dos 16 compostos não ordenam moléculas de forma útil{f.ranking ? ', e o teste de enriquecimento confirmou isso' : ''}.</li>
+          {f.ranking && <li><b>O teste de ranking tem limites.</b> Um receptor, uma seed, decoys do ChEMBL (não do DUD-E) presumidos inativos e moléculas sem protonação. Um resultado ruim aqui não prova que o Vina falha para o EGFR em geral.</li>}
         </ul>
       </div>
     </PageSection>

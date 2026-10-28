@@ -2,8 +2,10 @@ import { useMemo } from 'react'
 import type { TabId } from '../../../application/routes'
 import { listComplexes } from '../../../domain/benchmark'
 import type { Dashboard } from '../../../domain/entities'
-import { ago } from '../../format'
+import { summarizeFindings } from '../../../domain/findings'
+import { ago, f2 } from '../../format'
 import { PageSection } from '../../ui/PageSection'
+import { Takeaway } from '../../ui/Takeaway'
 import { Glossary } from './Glossary'
 import { HitsChart } from './HitsChart'
 import { OverviewCards } from './OverviewCards'
@@ -12,8 +14,12 @@ import { PhaseCards } from './PhaseCards'
 /** The project in numbers: where the pipeline stands, how each method did, what changed lately. */
 export default function SummaryPage({ data, onGo }: { data: Dashboard; onGo: (t: TabId) => void }) {
   const entries = useMemo(() => listComplexes(data), [data])
+  const f = useMemo(() => summarizeFindings(data), [data])
   return (
     <div className="grid gap-8">
+      {f.ranking
+        ? <Takeaway>O Vina <b>coloca bem a molécula</b> ({f.blind.vina} de {f.blind.n} nos complexos cegos) mas <b>não ordena ativos acima de decoys</b> (AUC {f2(f.ranking.aucDecoys)}). Use os scores para estudar o encaixe, não para escolher moléculas.</Takeaway>
+        : <Takeaway>O ranking das moléculas ainda não foi testado; os números abaixo são só da validação de poses.</Takeaway>}
       <OverviewCards data={data} />
       <PageSection title="Acerto de cada método, por complexo" intro="O resultado dos dois métodos nos mesmos complexos. A comparação não é de igual para igual: o Vina recebe a posição do bolsão.">
         <HitsChart entries={entries} />
