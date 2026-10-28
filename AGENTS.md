@@ -13,7 +13,7 @@ Este repositório é o projeto de portfólio de Pedro sobre EGFR (virtual screen
    cd ../egfr_worktrees/<tipo>-<assunto>
    ```
 
-   Atalho: `tools/git/new-task.sh <tipo> <assunto>` faz isso (e `tools/git/finish-task.sh <tipo>/<assunto>` limpa tudo depois do merge). `tools/git/sync-main.sh` atualiza a `main` local sem sobrescrever nada. Uma vez por clone, rode `tools/git/setup.sh` para ativar os hooks que bloqueiam commit e push direto na `main`.
+   Atalho: `tools/git/new-task.sh <tipo> <assunto>` faz isso (e `tools/git/finish-task.sh <tipo>/<assunto>` limpa tudo depois do merge). `new-task.sh` já liga à worktree os dados pesados que ficam fora do git na pasta principal (`data/blind`, `results/blind`, `node_modules`...) via symlink (`tools/git/link-data.sh`, para rodar de novo se precisar). `tools/git/sync-main.sh` atualiza a `main` local sem sobrescrever nada. Uma vez por clone, rode `tools/git/setup.sh` para ativar os hooks que bloqueiam commit e push direto na `main`.
    Tipos: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`. Antes de criar, rode `git worktree list` para ver o que já está em andamento e não reutilize a branch de outra sessão.
 3. **Uma branch por frente de trabalho, não por mudança.** Uma branch/PR cobre uma funcionalidade, etapa ou tema inteiro (por exemplo "análise de enriquecimento" ou "refactor do dashboard") e acumula vários commits. Não abra um PR para cada ajuste pequeno: agrupe na branch da frente que já está aberta. Só crie outra branch quando o assunto for realmente independente.
    **Commite com frequência**, em commits pequenos e com uma mudança lógica cada. Mensagens no formato Conventional Commits (`feat: ...`, `fix: ...`), no imperativo, explicando o porquê quando não for óbvio.
