@@ -17,4 +17,5 @@ if git -C "$main_dir" rev-parse --verify -q "refs/heads/${type}/${topic}" >/dev/
   exit 1
 fi
 git -C "$main_dir" worktree add -b "${type}/${topic}" "$dest" origin/main
+( cd "$dest" && "$(dirname "$0")/link-data.sh" )
 echo "Pronto. Trabalhe em: $dest"
