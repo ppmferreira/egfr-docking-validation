@@ -14,6 +14,8 @@ export interface SweepRow {
   top_rmsd: number; top_pass: boolean; best_rmsd: number
 }
 export interface DockRow { chembl_id: string; vina_score_kcal_mol: number; pIC50: number; ic50_nM: number; MW: number; logP: number }
+/** A curated ChEMBL compound with measured EGFR potency. */
+export interface Compound { chembl_id: string; MW: number; logP: number; pIC50: number; ic50_nM: number }
 export type StepStatus = 'done' | 'running' | 'pending'
 /** One stage of the analysis pipeline, as reported by the backend from the files each script writes. */
 export interface Step { id: string; name: string; script: string; status: StepStatus; progress: { done: number; total: number } | null }
@@ -44,6 +46,7 @@ export interface Dashboard {
   redocking: { poses: { pose: number; score: number; rmsd: number }[] } | null
   sweep: { rows: SweepRow[]; done: boolean; total: number }
   docking: DockRow[]
+  compounds: Compound[]
   enrichment: Enrichment | null
 }
 

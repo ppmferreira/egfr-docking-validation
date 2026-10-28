@@ -76,6 +76,14 @@ def docking_rows():
     return json.loads(df[['chembl_id', 'vina_score_kcal_mol', 'pIC50', 'ic50_nM', 'MW', 'logP']].to_json(orient='records'))
 
 
+def compounds_rows():
+    """The curated ChEMBL compounds (data/egfr_compounds_curated.csv) with the properties the chemical-space screen plots."""
+    csv = ROOT / 'data' / 'egfr_compounds_curated.csv'
+    if not csv.is_file():
+        return []
+    return json.loads(pd.read_csv(csv)[['chembl_id', 'MW', 'logP', 'pIC50', 'ic50_nM']].to_json(orient='records'))
+
+
 def _rows(path):
     """Data rows in a CSV (header excluded); 0 when the file does not exist yet."""
     return max(sum(1 for _ in path.open()) - 1, 0) if path.is_file() else 0
@@ -139,4 +147,4 @@ def dashboard_data():
     return {'blind': blind_payload(), 'diffdock': diffdock_rows(), 'activity': activity(), 'jobs': running_jobs(),
             'multi': {'rows': mrows, 'done': mdone, 'total': MULTI_TOTAL}, 'steps': steps(),
             'redocking': redocking_summary(), 'sweep': {'rows': rows, 'done': done, 'total': SWEEP_TOTAL},
-            'docking': docking_rows(), 'enrichment': enrichment_payload()}
+            'docking': docking_rows(), 'compounds': compounds_rows(), 'enrichment': enrichment_payload()}

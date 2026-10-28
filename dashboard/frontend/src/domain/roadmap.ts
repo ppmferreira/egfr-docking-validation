@@ -49,8 +49,8 @@ const DEFINITIONS: Definition[] = [
   },
   {
     id: 'improve', area: 'ciência', title: 'Melhorar o docking, se a análise pedir', stages: [], after: ['metrics'], manual: 'pending',
-    why: 'Só faz sentido depois de medir. Se o Vina não superar o controle, os suspeitos são a preparação do receptor, a protonação e as águas conservadas.',
-    doneWhen: ['Decisão registrada: o protocolo atual basta ou precisa mudar', 'Se mudar, repetir a validação'],
+    why: 'A medição mostrou que o Vina não separa ativos de decoys (AUC perto de 0,5). Antes de trocar de método, vale testar o que pode estar atrapalhando: o receptor escolhido, a seed e o esforço de busca, a protonação das moléculas e a escolha dos decoys.',
+    doneWhen: ['Repetir com mais seeds e exhaustiveness maior, e com um segundo receptor', 'Testar decoys do DUD-E, se o site estiver acessível', 'Testar um re-scoring ou um score de aprendizado de máquina contra o mesmo controle de tamanho', 'Decisão registrada: o protocolo atual basta ou precisa mudar'],
   },
   {
     id: 'report', area: 'entrega', title: 'Fechar o relatório e o repositório', stages: ['09', '13'], after: ['metrics'],
