@@ -7,6 +7,22 @@
 
 **What this is NOT:** Discovery or validation of a new drug; docking scores do not measure clinical effectiveness, selectivity, safety, or experimental binding affinity.
 
+## Status and main results
+
+The validation stage is complete; the ranking (screening-power) stage is **not**. Full details, methods and limitations are in [REPORT.md](REPORT.md).
+
+| Test | Result |
+|---|---|
+| Redocking on 11 EGFR-inhibitor complexes released in 2022 or later | AutoDock Vina (pocket given): **10 of 11** correct; DiffDock (blind): **8 of 11** correct |
+| Redocking on the classic complexes 1M17, 4WKQ, 1XKK | Vina: 1 of 3 (2.5 to 2.9 Å for the other two); DiffDock: 3 of 3 (probably in its training data) |
+| First ranking of 16 ChEMBL compounds | **Not interpreted**: made before validation, no inactives or decoys |
+
+A pose is correct when the heavy-atom RMSD to the crystal ligand is at most 2.0 Å. Vina results varied with the random seed (two complexes had one failing seed of three), so single runs should not be trusted.
+
+**Not done yet:** enrichment analysis (actives vs inactives vs decoys), cross-docking, structures released after 2023 (they lack a PDB-format file).
+
+![Redocking summary](figures/redocking_summary.png)
+
 ## Scientific choices
 
 - **Target:** human epidermal growth factor receptor (EGFR), kinase domain, **wild-type structure**.
@@ -19,11 +35,14 @@
 
 1. Install Python 3.10–3.12 (ideally via Miniforge) and create a new environment.
 2. Download this folder and open a terminal inside it.
-3. Install base dependencies:
+3. Install dependencies. For the full pipeline (including Vina and Meeko) use the conda environment:
 
    ```bash
-   python -m pip install -r requirements-base.txt
+   conda env create -f environment.yml
+   conda activate egfr-vs
    ```
+
+   For descriptors and conformers only, `python -m pip install -r requirements-base.txt` is enough. DiffDock needs its own environment (Python 3.9, PyTorch 1.13.1+cu117, a CUDA GPU); see [REPORT.md](REPORT.md#8-reproducibility).
 
 4. Download 1M17 and compute a provisional docking search box centered on the co-crystal ligand:
 
@@ -65,7 +84,7 @@ python scripts/04_docking.py
 
 `04_docking.py` prepares each ligand using Meeko, calls the `vina` command-line executable with a fixed seed, writes docking structures and saves a score table. Its comparison must be treated as **exploratory**. Scores (kcal/mol) are not measured ΔG values and cannot be directly converted to IC50.
 
-**Before interpreting rankings, add a redocking validation:** remove the bound erlotinib from 1M17, prepare that ligand while preserving/reconstructing valid chemistry, dock it back, and compare the predicted pose to the crystallographic pose by an appropriate heavy-atom RMSD with chemically correct atom mapping (e.g. a commonly used working criterion is approximately 2 Å). Do not claim the protocol is validated until you have actually performed this test and documented its result. Docking known actives to their own target is a retrospective demonstration, not an independent prediction of novel actives.
+**Before interpreting rankings, a redocking validation is required:** remove the bound ligand, rebuild it with valid chemistry, dock it back, and compare the predicted pose to the crystallographic pose by heavy-atom RMSD with chemically correct atom mapping (working criterion: 2 Å). This was done for erlotinib, gefitinib, lapatinib and 11 newer complexes; see [REPORT.md](REPORT.md). The scripts are `04b_redocking.py` (erlotinib), `04c_redocking_sweep.py` (box size, exhaustiveness, waters), `04d_redock_multi.py` (several complexes), `06_diffdock.py` (DiffDock) and `07_blind_select.py` plus `08_blind_run.py` (blind set). Docking known actives to their own target is a retrospective demonstration, not an independent prediction of novel actives.
 
 ## Documentation
 
@@ -83,6 +102,13 @@ scripts/02_chembl.py       Curate activities and plot chemical descriptors
 scripts/03_ligands.py      Generate ligand SDF 3D conformers
 scripts/04_docking.py      OPTIONAL Meeko + Vina screen
 scripts/05_analysis.py     OPTIONAL exploratory score comparison
+scripts/04b_redocking.py   Erlotinib redocking into 1M17 (Vina) with RMSD to the crystal pose
+scripts/04c_redocking_sweep.py  Box size, exhaustiveness and water sweep
+scripts/04d_redock_multi.py     Vina redocking on 1M17, 4WKQ, 1XKK
+scripts/06_diffdock.py     DiffDock on the same complexes (own conda env and GPU)
+scripts/07_blind_select.py Select EGFR-inhibitor complexes released in 2022 or later (fixed rules)
+scripts/08_blind_run.py    Vina and DiffDock on the blind set
+scripts/09_report_figures.py  Tables and figure used in REPORT.md
 data/                   Downloaded PDB, ChEMBL CSV and SDFs (generated)
 figures/                Plots (generated)
 results/                Rankings and observations (generated)
@@ -102,7 +128,7 @@ dashboard/              FastAPI backend + React frontend
 
 ## Sharing the project on LinkedIn
 
-A good first post after executing the scripts: *"I started a reproducible EGFR virtual-screening project to connect my pharmacy background with computational drug discovery. My first milestone was curating public EGFR IC50 measurements from ChEMBL and calculating molecular descriptors with RDKit. Next I will test whether molecular docking recovers a known erlotinib-bound structure (PDB 1M17), documenting failures and limitations as well as successes."*
+A post that matches the current, verified state: *"As the first stage of a reproducible EGFR virtual-screening project, I tested whether docking recovers experimental binding modes. On 11 EGFR-inhibitor crystal structures released in 2022 or later, AutoDock Vina (given the pocket) reproduced the crystal pose in 10 and DiffDock (no pocket given) in 8, using a 2 Å RMSD criterion. Vina results varied with the random seed, so I report several seeds. Next: testing whether the protocol ranks known actives above inactives and decoys. Limitations are documented in the report."* Keep the claims to what REPORT.md supports; the ranking test is not done yet.
 
 Only claim numerical results after you have generated and checked them. Prefer an English README, method details, code screenshots, and the generated figure to generic claims about identifying new drugs.
 
