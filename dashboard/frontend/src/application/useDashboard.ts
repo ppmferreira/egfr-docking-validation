@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Dashboard, Job } from '../domain/entities'
-import { useGateway } from './GatewayContext'
+import { useGateway } from './servicesContext'
 
 /** Loads the project data and reloads it whenever the backend reports newer result files. */
 export function useDashboard() {
@@ -12,17 +12,15 @@ export function useDashboard() {
   const [notice, setNotice] = useState('')
   const stamp = useRef<number | null>(null)
 
-  const load = useCallback(async () => { setData(await gateway.data()) }, [gateway])
-
   useEffect(() => {
-    load().catch(() => setOffline(true))
     const poll = async () => {
       try {
         const v = await gateway.version()
         setJobs(v.jobs)
-        if (stamp.current !== null && v.stamp !== stamp.current) {
-          await load()
-          setNotice('novos resultados')
+        // First pass loads the data; later passes reload it only when result files changed.
+        if (stamp.current === null || v.stamp !== stamp.current) {
+          setData(await gateway.data())
+          if (stamp.current !== null) setNotice('novos resultados')
         }
         stamp.current = v.stamp
         setClock(new Date().toLocaleTimeString('pt-BR'))
@@ -34,7 +32,7 @@ export function useDashboard() {
     poll()
     const id = setInterval(poll, 2500)
     return () => clearInterval(id)
-  }, [gateway, load])
+  }, [gateway])
 
   useEffect(() => {
     if (!notice) return

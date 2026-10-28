@@ -55,7 +55,7 @@ def _read_poses(files, ref):
     return sorted(out, key=lambda r: r['rank'])
 
 
-def _vina_poses(pdbqt, ref):
+def _vina_poses(pdbqt, ref, seed):
     if not pdbqt.is_file():
         return []
     scores = [float(l.split()[3]) for l in pdbqt.read_text().splitlines() if l.startswith('REMARK VINA RESULT')]
@@ -64,7 +64,7 @@ def _vina_poses(pdbqt, ref):
     for i, conf in enumerate(poses.GetConformers()):
         m = Chem.Mol(poses); m.RemoveAllConformers(); m.AddConformer(Chem.Conformer(conf), assignId=True)
         m = Chem.RemoveHs(m)
-        out.append({'pose': i + 1, 'score': scores[i], 'rmsd': round(rdMolAlign.CalcRMS(m, ref), 2), 'mol': Chem.MolToMolBlock(m)})
+        out.append({'seed': seed, 'pose': i + 1, 'score': scores[i], 'rmsd': round(rdMolAlign.CalcRMS(m, ref), 2), 'mol': Chem.MolToMolBlock(m)})
     return out
 
 
@@ -77,12 +77,12 @@ def cx_payload(pdb):
 @lru_cache(maxsize=16)
 def _cx_payload(pdb, _sig):
     """Everything the Complexos view draws for one structure: protein, crystal ligand, all DiffDock poses and the
-    Vina poses of seed 1 (box 20 A). Works for the development complexes and for the blind-test ones."""
+    Vina poses of every seed run (box 20 A). Works for the development complexes and for the blind-test ones."""
     if complex_payload(pdb) is not None:
         base = complex_payload(pdb)
         ref = load_script('06_diffdock').crystal_ligand(pdb)
         dd_dir = ROOT / 'results' / 'diffdock' / pdb
-        vina = ROOT / 'results' / 'redocking_multi' / f'{pdb}_b20_s1.pdbqt'
+        vina_file = lambda seed: ROOT / 'results' / 'redocking_multi' / f'{pdb}_b20_s{seed}.pdbqt'
         name = next((r['ligand'] for r in diffdock_rows() if r['pdb'] == pdb), pdb)
         has_traj = any(dd_dir.glob('rank*_reverseprocess.pdb'))
     else:
@@ -101,9 +101,10 @@ def _cx_payload(pdb, _sig):
         lines = [l for l in (d / 'receptor.pdb').read_text().splitlines() if l.startswith('ATOM')]
         base = {'protein': '\n'.join(lines) + '\nEND\n', 'crystal': Chem.MolToMolBlock(ref),
                 'center': [sum(p[k] for p in pts) / len(pts) for k in range(3)]}
-        dd_dir, vina, name, has_traj = d / 'diffdock' / pdb, d / 'vina_s1.pdbqt', entry['comp'], False
+        dd_dir, name, has_traj = d / 'diffdock' / pdb, entry['comp'], False
+        vina_file = lambda seed: d / f'vina_s{seed}.pdbqt'
     return {**base, 'pdb': pdb, 'ligand': name, 'has_traj': has_traj,
-            'diffdock': _read_poses(dd_dir.glob('rank*.sdf'), ref), 'vina': _vina_poses(vina, ref)}
+            'diffdock': _read_poses(dd_dir.glob('rank*.sdf'), ref), 'vina': [p for seed in (1, 2, 3) for p in _vina_poses(vina_file(seed), ref, seed)]}
 
 
 def diffdock_vis(pdb, rank):

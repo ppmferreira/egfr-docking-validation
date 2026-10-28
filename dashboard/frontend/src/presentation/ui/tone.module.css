@@ -1,3 +1,0 @@
-.ok { color: var(--pass); }
-.near { color: var(--warn); }
-.bad { color: var(--fail); }

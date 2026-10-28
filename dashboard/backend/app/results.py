@@ -76,19 +76,45 @@ def docking_rows():
     return json.loads(df[['chembl_id', 'vina_score_kcal_mol', 'pIC50', 'ic50_nM', 'MW', 'logP']].to_json(orient='records'))
 
 
+def _rows(path):
+    """Data rows in a CSV (header excluded); 0 when the file does not exist yet."""
+    return max(sum(1 for _ in path.open()) - 1, 0) if path.is_file() else 0
+
+
 def steps():
-    def has(p): return (ROOT / p).exists()
-    cur = ROOT / 'data' / 'egfr_compounds_curated.csv'
-    n_cur = max(sum(1 for _ in cur.open()) - 1, 0) if cur.is_file() else 0
-    return [
-        {'id': '01', 'name': 'Estrutura da proteína (PDB 1M17)', 'done': has('data/egfr_box.txt')},
-        {'id': '02', 'name': f'Dados do ChEMBL ({n_cur} compostos únicos)', 'done': has('results/docking_shortlist.csv')},
-        {'id': '03', 'name': 'Conformeros 3D dos 16 compostos', 'done': has('data/ligands_sdf')},
-        {'id': '04', 'name': 'Docking dos 16 compostos', 'done': has('results/vina_scores.csv')},
-        {'id': '04b', 'name': 'Redocking do erlotinibe', 'done': has('results/redocking_rmsd.csv')},
-        {'id': '04c', 'name': 'Varredura de parâmetros (erlotinibe)', 'done': has('results/redocking_sweep.csv')},
-        {'id': '04d', 'name': 'Redocking em outros complexos (4WKQ, 1XKK)', 'done': has('results/redocking_multi.csv')},
+    """Pipeline stages with their state, read from the files each script writes (never typed in by hand)."""
+    jobs = [j['name'] for j in running_jobs()]
+    data, res = ROOT / 'data', ROOT / 'results'
+    enrich = data / 'enrichment'
+    library = _rows(enrich / 'chembl_actives_inactives.csv') + _rows(enrich / 'decoys.csv')
+    blind_sel = json.loads((data / 'blind' / 'selected.json').read_text())['selected'] if (data / 'blind' / 'selected.json').is_file() else []
+    blind_done = len({r for r in pd.read_csv(res / 'blind_results.csv').pdb}) if (res / 'blind_results.csv').is_file() else 0
+    # (id, name, script, finished?, progress or None)
+    stages = [
+        ('01', 'Estrutura da proteína (1M17)', '01_target.py', (data / 'egfr_box.txt').is_file(), None),
+        ('02', 'Dados de atividade do ChEMBL', '02_chembl.py', (res / 'docking_shortlist.csv').is_file(), None),
+        ('03', 'Formas 3D dos 16 compostos', '03_ligands.py', (data / 'ligands_sdf').exists(), None),
+        ('04', 'Docking dos 16 compostos', '04_docking.py', (res / 'vina_scores.csv').is_file(), None),
+        ('04b', 'Redocking do erlotinibe', '04b_redocking.py', (res / 'redocking_rmsd.csv').is_file(), None),
+        ('04c', 'Varredura de parâmetros', '04c_redocking_sweep.py', (res / 'redocking_sweep.csv').is_file(), (_rows(res / 'redocking_sweep.csv'), SWEEP_TOTAL)),
+        ('04d', 'Redocking em 4WKQ e 1XKK', '04d_redock_multi.py', (res / 'redocking_multi.csv').is_file(), (_rows(res / 'redocking_multi.csv'), MULTI_TOTAL)),
+        ('06', 'DiffDock nos três complexos', '06_diffdock.py', (res / 'diffdock_results.csv').is_file(), None),
+        ('07', 'Seleção dos complexos cegos', '07_blind_select.py', bool(blind_sel), None),
+        ('08', 'Teste cego (Vina e DiffDock)', '08_blind_run.py', bool(blind_sel) and blind_done >= len(blind_sel), (blind_done, len(blind_sel)) if blind_sel else None),
+        ('09', 'Tabelas e figuras do relatório', '09_report_figures.py', (res / 'report_tables.md').is_file(), None),
+        ('10', 'Ativos e inativos do ChEMBL', '10_enrichment_data.py', (enrich / 'chembl_actives_inactives.csv').is_file(), None),
+        ('11', 'Decoys', '11_decoys.py', (enrich / 'decoys.csv').is_file(), None),
+        ('12', 'Docking da biblioteca de enriquecimento', '12_enrichment_dock.py',
+         bool(library) and _rows(res / 'enrichment_scores.csv') >= library, (_rows(res / 'enrichment_scores.csv'), library) if library else None),
+        ('13', 'Análise de enriquecimento (ROC, EF1%)', '13_enrichment_analysis.py', (res / 'enrichment_tables.md').is_file(), None),
     ]
+    out = []
+    for sid, name, script, finished, progress in stages:
+        running = any(j.startswith(f'{sid}_') for j in jobs)
+        status = 'done' if finished and not running else 'running' if running else 'pending'
+        out.append({'id': sid, 'name': name, 'script': script, 'status': status,
+                    'progress': {'done': progress[0], 'total': progress[1]} if progress and progress[1] else None})
+    return out
 
 
 def redocking_summary():

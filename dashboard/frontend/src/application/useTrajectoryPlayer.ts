@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { centroid, distance, parseFrames, type Frame } from '../domain/trajectory'
-import { useGateway } from './GatewayContext'
+import { useGateway } from './servicesContext'
 
 const STEP_MS = 350
 

@@ -6,7 +6,7 @@ export const TAB_TITLES: Record<TabId, string> = {
 }
 
 export const TAB_GROUPS: [string, TabId[]][] = [
-  ['Resultados', ['cx', 'valid', 'dock', 'chem']],
   ['Entender', ['guia', 'resumo', 'next']],
+  ['Resultados', ['cx', 'valid', 'dock', 'chem']],
   ['Acompanhar', ['live']],
 ]

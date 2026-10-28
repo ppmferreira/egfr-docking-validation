@@ -17,6 +17,7 @@ export function useComplexExplorer(data: Dashboard) {
   const { detail, failed } = useComplexDetail(current, rowsKey)
 
   const [ddChoice, setDDChoice] = useState(1)
+  const [vinaSeed, setVinaSeed] = useState(1)
   const [vinaPose, setVinaPose] = useState(1)
   const [layers, setLayers] = useState<Layers>(DEFAULT_LAYERS)
 
@@ -25,10 +26,11 @@ export function useComplexExplorer(data: Dashboard) {
 
   const pick = (pdb: string) => {
     if (pdb === current) return
-    player.reset(); setPicked(pdb); setDDChoice(1); setVinaPose(1)
+    player.reset(); setPicked(pdb); setDDChoice(1); setVinaSeed(1); setVinaPose(1)
   }
   const chooseDiffDock = (rank: number) => { player.stop(); setDDChoice(rank); setLayers(l => ({ ...l, dd: true })) }
   const chooseVina = (pose: number) => { setVinaPose(pose); setLayers(l => ({ ...l, vina: true })) }
+  const chooseSeed = (seed: number) => { setVinaSeed(seed); setVinaPose(1); setLayers(l => ({ ...l, vina: true })) }
   const toggleLayer = (k: keyof Layers) => { if (k === 'dd') player.stop(); setLayers(l => ({ ...l, [k]: !l[k] })) }
 
   // ← → step through the DiffDock poses.
@@ -44,5 +46,5 @@ export function useComplexExplorer(data: Dashboard) {
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  return { entries, current, entry, detail, failed, ddRank, vinaPose, layers, player, pick, chooseDiffDock, chooseVina, toggleLayer }
+  return { entries, current, entry, detail, failed, ddRank, vinaSeed, vinaPose, layers, player, pick, chooseDiffDock, chooseSeed, chooseVina, toggleLayer }
 }

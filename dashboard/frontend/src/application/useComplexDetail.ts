@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ComplexDetail } from '../domain/entities'
-import { useGateway } from './GatewayContext'
+import { useGateway } from './servicesContext'
 
 /** Fetches one complex. `refreshKey` forces a re-read, e.g. when a blind-test run adds rows for it. */
 export function useComplexDetail(pdb: string | null, refreshKey: number) {
