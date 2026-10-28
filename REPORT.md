@@ -1,7 +1,7 @@
-# Redocking validation of docking protocols for EGFR inhibitors
+# Redocking and enrichment tests of docking protocols for EGFR inhibitors
 
 **Author:** Pedro Paulo de Melo Ferreira
-**Status:** validation stage complete; the screening-power test (ranking actives above inactives) is **not done yet**.
+**Status:** pose validation complete; the first screening-power (enrichment) test is complete and **negative** for AutoDock Vina with this protocol (Section 5.6).
 **Scope:** retrospective, computational, exploratory. Nothing here discovers or validates a drug.
 
 ## 1. Summary
@@ -13,13 +13,14 @@ This stage asked a prerequisite question for virtual screening: can the docking 
 - **Vina results depend on the seed.** Two blind complexes had one failing seed out of three (5.8 Å and 13.3 Å). Single-run Vina results should not be trusted.
 - **8SC7 failed for both methods.** It is the one complex where Vina failed in all three seeds (7.9 Å).
 - A parameter sweep on 1M17 showed that a box of 20 Å worked best (2 of 3 seeds correct), whereas 16, 22 and 26 Å failed. This was tuned on one complex and should not be read as a general rule.
+- **Enrichment (Section 5.6):** with 100 ChEMBL actives, 100 measured inactives and 300 property-matched decoys docked by Vina into one receptor (9BY4), the Vina score ranks actives against decoys at **ROC AUC 0.53** (95% CI 0.46 to 0.59), essentially chance. Against measured inactives, counting heavy atoms (AUC 0.75) beats Vina (0.60). Correct poses did not translate into correct ranking.
 - Because the protocol had not been validated when the first ranking of 16 compounds was produced, **that ranking is not interpreted** (Section 5.1).
 
 ## 2. Question and scope
 
 The project question (README) is whether a transparent cheminformatics and docking workflow can prioritize experimentally characterized EGFR inhibitors. Docking scores are not binding affinities. Before testing ranking performance, the protocol must at least recover the crystallographic pose of a known ligand; this report documents that step.
 
-Not done: enrichment analysis with inactives and decoys, cross-docking (ligand into a different structure than its own), selectivity, mutants, cellular activity.
+Not done: cross-docking (ligand into a different structure than its own), selectivity, mutants, cellular activity.
 
 ## 3. Data
 
@@ -103,6 +104,28 @@ Totals: Vina 10 of 11 complexes, and 28 of 33 individual runs at most 2 Å; Diff
 
 For the 9 Vina poses of erlotinib in 1M17, the minimum ligand N or O to Met769 backbone N or O distance was at most 3.5 Å in 6 poses. Poses 1, 2, 3 and 6 satisfy it but are 5.9 to 8.6 Å from the crystal pose. So the hinge contact alone does not discriminate correct from incorrect poses. (Computed for one complex.)
 
+### 5.6 Enrichment test (Vina, receptor 9BY4)
+
+**Design (fixed before docking).** ChEMBL target CHEMBL203, biochemical IC50 in nM (23,615 records). Active: median exact IC50 at most 100 nM; inactive: median at least 10,000 nM (or only ">" values at least 10,000 nM); 15 to 60 heavy atoms, at most 15 rotatable bonds, elements C, N, O, S, F, Cl, Br, I. After filtering there were 5,125 actives and 1,853 inactives; a fixed random sample (seed 42) of 100 of each was kept. Decoys: 3 per active (300), drawn from a pool of 44,376 random ChEMBL molecules with Tanimoto (Morgan, radius 2) below 0.30 to every kept EGFR compound, matched to the active on molecular weight, logP, H-bond donors and acceptors and rotatable bonds. Receptor 9BY4 was chosen by a rule fixed beforehand (wild-type sequence, correct Vina pose in 3 of 3 seeds in the blind test, prepared without dropped residues, best resolution). Vina: box 20 Å at the crystal ligand, exhaustiveness 8, one seed (42), best-pose score. All 500 compounds docked (0 failures). Scripts: `10_enrichment_data.py`, `11_decoys.py`, `12_enrichment_dock.py`, `13_enrichment_analysis.py`.
+
+**Results** (95% bootstrap CIs, 2,000 resamples; positives are the 100 actives; EF maximum is 4.0 for A, 2.0 for B, 5.0 for C):
+
+| Task | Scorer | ROC AUC (95% CI) | Avg. precision | EF1% | EF5% |
+|---|---|---|---|---|---|
+| A: vs decoys | Vina | 0.53 (0.46 to 0.59) | 0.26 | 1.0 | 0.8 |
+| A | Vina per heavy atom | 0.52 (0.46 to 0.58) | 0.27 | 2.0 | 1.2 |
+| A | Heavy-atom count | 0.48 (0.42 to 0.55) | 0.23 | 0.0 | 0.4 |
+| B: vs measured inactives | Vina | 0.60 (0.52 to 0.68) | 0.58 | 1.0 | 1.4 |
+| B | Vina per heavy atom | 0.24 (0.18 to 0.31) | 0.36 | 0.0 | 0.2 |
+| B | Heavy-atom count | 0.75 (0.68 to 0.81) | 0.71 | 0.0 | 1.4 |
+| C: vs both | Vina | 0.55 (0.49 to 0.60) | 0.22 | 1.0 | 0.8 |
+| C | Vina per heavy atom | 0.45 (0.39 to 0.51) | 0.18 | 0.0 | 0.4 |
+| C | Heavy-atom count | 0.55 (0.49 to 0.61) | 0.21 | 0.0 | 0.6 |
+
+AUC difference, Vina minus the size baseline: A +0.04 (-0.02 to +0.11); B -0.15 (-0.22 to -0.08); C 0.00 (-0.07 to +0.06). The Spearman correlation between Vina score and heavy-atom count is -0.45. Median Vina score: actives -8.51, decoys -8.38, inactives -8.15 kcal/mol. Median heavy atoms: actives 35, decoys 35, inactives 28. Figure: `figures/enrichment.png`; full output: `results/enrichment_tables.md`.
+
+**Reading.** Against property-matched decoys the Vina score is close to chance, and it does not beat the size baseline anywhere. In task B the measured inactives are smaller than the actives (median 28 versus 35 heavy atoms), so a size effect is built into that comparison and the baseline is the fair reference; there, Vina is worse than counting atoms. Normalizing the score by size (per heavy atom) makes B worse (0.24), meaning larger compounds score better in absolute terms. This test does not show that docking cannot work for EGFR; it shows that this protocol, on this library, does not prioritize actives.
+
 ## 6. Interpretation
 
 - Vina reproduces crystal poses well on this set **when the pocket is supplied and several seeds are run**. Failures are not rare enough to ignore (1 complex of 11 fully, 2 more with one bad seed).
@@ -118,9 +141,10 @@ For the 9 Vina poses of erlotinib in 1M17, the minimum ligand N or O to Met769 b
 4. **Tuned parameters.** The 20 Å box was chosen on 1M17 before being tested elsewhere; the blind set did not tune anything.
 5. **Training overlap.** The classic complexes are probably in DiffDock's training data; the blind-date assumption was not verified against the DiffDock publication.
 6. **Receptor preparation.** Residues with missing atoms were dropped for five receptors (4WKQ, 1XKK, 7ZYQ, 8G63, 8TO3). In 8TO3 a residue 3.8 Å from the ligand was dropped, which may explain the one failing Vina seed (13.3 Å) in that complex; this was not tested. Waters and protonation were not optimized.
-7. **Pose accuracy is not screening power.** Correct poses do not imply that scores rank compounds by activity.
+7. **Pose accuracy is not screening power.** Correct poses do not imply that scores rank compounds by activity; Section 5.6 shows this.
 8. **Selection filters.** The blind set excludes covalent ligands and ligands without a hinge hydrogen bond, which are common among EGFR inhibitors.
 9. Single DiffDock run per complex (no repeat), single machine.
+10. **Enrichment limits.** One receptor (9BY4), one seed, exhaustiveness 8; decoys come from ChEMBL (not DUD-E) and are assumed, not shown, to be inactive; the 100 + 100 compounds are a random sample of larger sets; SMILES were taken neutral, without protonation states or tautomer enumeration; ChEMBL IC50 values come from different assays. The measured inactives differ in size from the actives.
 
 ## 8. Reproducibility
 
@@ -135,13 +159,15 @@ python scripts/04d_redock_multi.py                                   # 1M17, 4WK
 python scripts/06_diffdock.py --vis                                  # DiffDock in its own env, see below
 python scripts/07_blind_select.py && python scripts/08_blind_run.py  # blind set
 python scripts/09_report_figures.py                                  # figure and tables of this report
+python scripts/10_enrichment_data.py && python scripts/11_decoys.py # actives, inactives, decoys
+python scripts/12_enrichment_dock.py && python scripts/13_enrichment_analysis.py  # ~2 h, then ROC/EF
 ```
 
 DiffDock needs a separate environment (Python 3.9, PyTorch 1.13.1+cu117, a CUDA GPU) and a clone of the DiffDock repository at commit `85c49b6` in `../tools/DiffDock`; `scripts/06_diffdock.py` expects both. Tables used here are regenerated in `results/report_tables.md`.
 
 ## 9. Suggested next steps
 
-1. **Enrichment test:** ChEMBL actives (pIC50 at least 7), inactives (pIC50 below 5) and decoys; report ROC AUC and EF1% with the validated Vina protocol (several seeds), against a trivial baseline such as molecular weight.
+1. **Understand the enrichment result before changing the method:** repeat with several seeds and higher exhaustiveness, a second receptor, DUD-E decoys if reachable, protonated ligands, and a rescoring or ML scoring step; compare each with the heavy-atom baseline.
 2. **Cross-docking** with the blind-set ligands into non-cognate EGFR structures.
 3. **Extend the blind set** by converting mmCIF entries from 2024 and 2025.
 4. A core-only RMSD to test the flexible-tail hypothesis for gefitinib and lapatinib.

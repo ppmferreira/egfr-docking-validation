@@ -11,6 +11,7 @@ Only compounds that docked successfully are scored; failures are reported by cla
 """
 from __future__ import annotations
 from pathlib import Path
+import json
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -76,15 +77,20 @@ def main():
     out = ['# Enrichment results (Vina, receptor 9BY4)', '', f'Docking outcome by class: {status}', '']
     tasks = {'A: actives vs decoys': ['decoy'], 'B: actives vs measured inactives': ['inactive'],
              'C: actives vs inactives + decoys': ['inactive', 'decoy']}
-    fig, axes = plt.subplots(1, 3, figsize=(13, 4.1)); store = {}
+    fig, axes = plt.subplots(1, 3, figsize=(13, 4.1)); store = {}; js = {'tasks': []}
     for (tname, negs) in tasks.items():
         if (ok.label.isin(negs).sum() < 5) or ((ok.label == 'active').sum() < 5):
             continue
         res, diff, (y, scores) = evaluate(ok, negs); store[tname] = (y, scores)
+        js['tasks'].append({'name': tname, 'n_pos': int(res.n_pos[0]), 'n_neg': int(res.n_neg[0]), 'ef_max': float(res.EF_max[0]),
+                            'diff': {'value': diff[0], 'lo': diff[1], 'hi': diff[2]},
+                            'scorers': [{'name': r.scorer, 'auc': r.AUC, 'lo': r.AUC_lo, 'hi': r.AUC_hi, 'ap': r.AP, 'ef1': r._6, 'ef5': r._7,
+                                         'roc': [[round(float(a), 4), round(float(b), 4)] for a, b in zip(*roc(y, scores[r.scorer]))][::2]}
+                                        for r in res.itertuples()]})
         out += [f'## {tname}', '', f'Positives {res.n_pos[0]}, negatives {res.n_neg[0]} (maximum possible EF = {res.EF_max[0]:.1f})', '',
                 '| Scorer | ROC AUC (95% CI) | Avg. precision | EF1% | EF5% |', '|---|---|---|---|---|']
         for r in res.itertuples():
-            out.append(f'| {r.scorer} | {r.AUC:.2f} ({r.AUC_lo:.2f} to {r.AUC_hi:.2f}) | {r.AP:.2f} | {r._7:.1f} | {r._8:.1f} |')
+            out.append(f'| {r.scorer} | {r.AUC:.2f} ({r.AUC_lo:.2f} to {r.AUC_hi:.2f}) | {r.AP:.2f} | {r._6:.1f} | {r._7:.1f} |')
         out += ['', f'AUC difference, Vina minus size baseline: {diff[0]:+.2f} (95% CI {diff[1]:+.2f} to {diff[2]:+.2f})', '']
     for ax, tname in zip(axes[:2], ['A: actives vs decoys', 'B: actives vs measured inactives']):
         if tname not in store:
@@ -105,6 +111,9 @@ def main():
     fig.tight_layout(); fig.savefig(ROOT / 'figures' / 'enrichment.png', dpi=200, bbox_inches='tight')
     corr = ok[['vina_score', 'heavy_atoms']].corr(method='spearman').iloc[0, 1]
     out += [f'Spearman correlation between Vina score and heavy-atom count (all docked compounds): {corr:+.2f}', '']
+    js['status'] = status; js['spearman_size'] = float(corr)
+    js['points'] = [{'label': r.label, 'score': r.vina_score, 'heavy': int(r.heavy_atoms)} for r in ok.itertuples()]
+    (ROOT / 'results' / 'enrichment_metrics.json').write_text(json.dumps(js))
     (ROOT / 'results' / 'enrichment_tables.md').write_text('\n'.join(out))
     print('\n'.join(out))
 

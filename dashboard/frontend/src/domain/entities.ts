@@ -26,6 +26,14 @@ export interface BlindRow {
 }
 export interface Blind { selected: BlindSelected[]; rows: BlindRow[]; rejected: Record<string, number>; n_candidates?: number }
 
+export interface EnrichScorer { name: string; auc: number; lo: number; hi: number; ap: number; ef1: number; ef5: number; roc: [number, number][] }
+export interface EnrichTask {
+  name: string; n_pos: number; n_neg: number; ef_max: number
+  diff: { value: number; lo: number; hi: number }; scorers: EnrichScorer[]
+}
+export interface EnrichPoint { label: 'active' | 'inactive' | 'decoy'; score: number; heavy: number }
+export interface Enrichment { tasks: EnrichTask[]; points: EnrichPoint[]; spearman_size: number; status: Record<string, string> }
+
 export interface Dashboard {
   blind: Blind
   diffdock: DiffDockRow[]
@@ -36,6 +44,7 @@ export interface Dashboard {
   redocking: { poses: { pose: number; score: number; rmsd: number }[] } | null
   sweep: { rows: SweepRow[]; done: boolean; total: number }
   docking: DockRow[]
+  enrichment: Enrichment | null
 }
 
 export interface Gpu { name: string; util: number; mem_used: number; mem_total: number; temp: number }

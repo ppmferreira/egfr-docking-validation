@@ -127,10 +127,16 @@ def redocking_summary():
                       for r in df.itertuples()]}
 
 
+def enrichment_payload():
+    """ROC/AUC results written by scripts/13_enrichment_analysis.py (None until the analysis has run)."""
+    f = ROOT / 'results' / 'enrichment_metrics.json'
+    return json.loads(f.read_text()) if f.is_file() else None
+
+
 def dashboard_data():
     rows, done = sweep_rows()
     mrows, mdone = multi_rows()
     return {'blind': blind_payload(), 'diffdock': diffdock_rows(), 'activity': activity(), 'jobs': running_jobs(),
             'multi': {'rows': mrows, 'done': mdone, 'total': MULTI_TOTAL}, 'steps': steps(),
             'redocking': redocking_summary(), 'sweep': {'rows': rows, 'done': done, 'total': SWEEP_TOTAL},
-            'docking': docking_rows()}
+            'docking': docking_rows(), 'enrichment': enrichment_payload()}

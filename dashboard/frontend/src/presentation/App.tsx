@@ -12,6 +12,7 @@ import { TipProvider } from './ui/Tip'
 const ComplexesPage = lazy(() => import('./features/complexes/ComplexesPage'))
 const ValidationPage = lazy(() => import('./features/validation/ValidationPage'))
 const DockingPage = lazy(() => import('./features/docking/DockingPage'))
+const EnrichmentPage = lazy(() => import('./features/enrichment/EnrichmentPage'))
 const ChemPage = lazy(() => import('./features/chem/ChemPage'))
 const GuidePage = lazy(() => import('./features/guide/GuidePage'))
 const SummaryPage = lazy(() => import('./features/summary/SummaryPage'))
@@ -47,6 +48,7 @@ export default function App() {
       case 'cx': return <ComplexesPage data={data} running={blindRunning} />
       case 'valid': return <ValidationPage data={data} />
       case 'dock': return <DockingPage data={data} />
+      case 'enrich': return <EnrichmentPage data={data} />
       case 'chem': return <ChemPage />
       case 'guia': return <GuidePage data={data} onGo={go} />
       case 'resumo': return <SummaryPage data={data} onGo={go} />
