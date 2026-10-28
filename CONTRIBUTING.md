@@ -1,6 +1,6 @@
 # Workflow
 
-Every change goes through git.
+Every change goes through git. Work happens in a git worktree per task, so parallel sessions (people, Claude Code, Codex) never overwrite each other. The full rules are in [AGENTS.md](AGENTS.md).
 
 - `main` is always in a working state.
 - Work on a short-lived branch: `feat/<topic>`, `fix/<topic>`, `docs/<topic>`, `chore/<topic>`.
