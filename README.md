@@ -9,19 +9,22 @@
 
 ## Status and main results
 
-The validation stage is complete; the ranking (screening-power) stage is **not**. Full details, methods and limitations are in [REPORT.md](REPORT.md).
+Pose validation is complete, and the first ranking (enrichment) test is complete and **negative** for Vina with this protocol. Full details, methods and limitations are in [REPORT.md](REPORT.md).
 
 | Test | Result |
 |---|---|
 | Redocking on 11 EGFR-inhibitor complexes released in 2022 or later | AutoDock Vina (pocket given): **10 of 11** correct; DiffDock (blind): **8 of 11** correct |
 | Redocking on the classic complexes 1M17, 4WKQ, 1XKK | Vina: 1 of 3 (2.5 to 2.9 Å for the other two); DiffDock: 3 of 3 (probably in its training data) |
+| Enrichment: 100 ChEMBL actives vs 300 property-matched decoys and 100 measured inactives (Vina, receptor 9BY4) | ROC AUC **0.53** vs decoys (chance is 0.50); vs measured inactives, counting heavy atoms (0.75) beats Vina (0.60). Good poses did not give a good ranking |
 | First ranking of 16 ChEMBL compounds | **Not interpreted**: made before validation, no inactives or decoys |
 
 A pose is correct when the heavy-atom RMSD to the crystal ligand is at most 2.0 Å. Vina results varied with the random seed (two complexes had one failing seed of three), so single runs should not be trusted.
 
-**Not done yet:** enrichment analysis (actives vs inactives vs decoys), cross-docking, structures released after 2023 (they lack a PDB-format file).
+**Not done yet:** enrichment with more seeds, receptors and DUD-E decoys, cross-docking, structures released after 2023 (they lack a PDB-format file).
 
 ![Redocking summary](figures/redocking_summary.png)
+
+![Enrichment](figures/enrichment.png)
 
 ## Scientific choices
 
@@ -109,6 +112,10 @@ scripts/06_diffdock.py     DiffDock on the same complexes (own conda env and GPU
 scripts/07_blind_select.py Select EGFR-inhibitor complexes released in 2022 or later (fixed rules)
 scripts/08_blind_run.py    Vina and DiffDock on the blind set
 scripts/09_report_figures.py  Tables and figure used in REPORT.md
+scripts/10_enrichment_data.py ChEMBL actives and measured inactives
+scripts/11_decoys.py       Property-matched decoys
+scripts/12_enrichment_dock.py Vina on the 500-compound library
+scripts/13_enrichment_analysis.py ROC AUC, EF1%, EF5% vs size baseline
 data/                   Downloaded PDB, ChEMBL CSV and SDFs (generated)
 figures/                Plots (generated)
 results/                Rankings and observations (generated)
@@ -128,7 +135,7 @@ dashboard/              FastAPI backend + React frontend
 
 ## Sharing the project on LinkedIn
 
-A post that matches the current, verified state: *"As the first stage of a reproducible EGFR virtual-screening project, I tested whether docking recovers experimental binding modes. On 11 EGFR-inhibitor crystal structures released in 2022 or later, AutoDock Vina (given the pocket) reproduced the crystal pose in 10 and DiffDock (no pocket given) in 8, using a 2 Å RMSD criterion. Vina results varied with the random seed, so I report several seeds. Next: testing whether the protocol ranks known actives above inactives and decoys. Limitations are documented in the report."* Keep the claims to what REPORT.md supports; the ranking test is not done yet.
+A post that matches the current, verified state: *"As the first stage of a reproducible EGFR virtual-screening project, I tested whether docking recovers experimental binding modes. On 11 EGFR-inhibitor crystal structures released in 2022 or later, AutoDock Vina (given the pocket) reproduced the crystal pose in 10 and DiffDock (no pocket given) in 8, using a 2 Å RMSD criterion. Vina results varied with the random seed, so I report several seeds. I then tested whether Vina ranks 100 known actives above 300 property-matched decoys: it did not (ROC AUC 0.53, chance is 0.50), so good poses did not mean good ranking. Limitations are documented in the report."* Keep the claims to what REPORT.md supports; the enrichment test used one receptor and one seed.
 
 Only claim numerical results after you have generated and checked them. Prefer an English README, method details, code screenshots, and the generated figure to generic claims about identifying new drugs.
 

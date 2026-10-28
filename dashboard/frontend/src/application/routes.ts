@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 
-export type TabId = 'cx' | 'valid' | 'dock' | 'chem' | 'guia' | 'resumo' | 'next' | 'live'
+export type TabId = 'cx' | 'valid' | 'dock' | 'enrich' | 'chem' | 'guia' | 'resumo' | 'next' | 'live'
 
-const TAB_IDS: readonly TabId[] = ['cx', 'valid', 'dock', 'chem', 'guia', 'resumo', 'next', 'live']
+const TAB_IDS: readonly TabId[] = ['cx', 'valid', 'dock', 'enrich', 'chem', 'guia', 'resumo', 'next', 'live']
 export const isTabId = (s: string): s is TabId => (TAB_IDS as readonly string[]).includes(s)
 
 /** The current tab lives in the URL hash, so a tab can be linked to and survives a reload. */
