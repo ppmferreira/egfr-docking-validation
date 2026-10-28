@@ -1,0 +1,7 @@
+.player { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.player input[type=range] { flex: 1; min-width: 120px; }
+.label { font: 12px var(--font-mono); color: var(--muted); min-width: 190px; text-align: right; }
+.play { font: 500 13px var(--font-body); padding: 6px 14px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 6px; cursor: pointer; min-width: 112px; }
+.play:hover { border-color: var(--docked); }
+.play:focus-visible { outline: 2px solid var(--docked); outline-offset: 1px; }
+@media (max-width: 1180px) { .player { flex-wrap: wrap; } .label { text-align: left; } }

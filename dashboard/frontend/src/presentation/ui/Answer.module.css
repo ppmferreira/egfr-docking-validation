@@ -1,0 +1,6 @@
+.answer { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; border: 1px solid; border-radius: 6px; background: var(--panel); }
+.fail { border-color: var(--fail); } .warn { border-color: var(--warn); } .ok { border-color: var(--pass); } .no { border-color: var(--line); }
+.chip { font: 500 11px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; padding: 4px 8px; border-radius: 3px; border: 1px solid; white-space: nowrap; margin-top: 2px; }
+.fail .chip { color: var(--fail); } .warn .chip { color: var(--warn); } .ok .chip { color: var(--pass); } .no .chip { color: var(--muted); }
+.text { margin: 0; max-width: 78ch; }
+.text b { font-weight: 600; }

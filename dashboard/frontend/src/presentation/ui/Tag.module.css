@@ -1,0 +1,2 @@
+.tag { margin-left: auto; font: 500 11px var(--font-mono); padding: 2px 7px; border-radius: 3px; border: 1px solid; white-space: nowrap; }
+.ok { color: var(--pass); } .run { color: var(--warn); } .no { color: var(--muted); } .bad { color: var(--fail); }

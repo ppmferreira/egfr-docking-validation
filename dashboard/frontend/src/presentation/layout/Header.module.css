@@ -1,0 +1,7 @@
+.bar { border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+.inner { max-width: 1180px; margin: 0 auto; padding-inline: 16px; }
+.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 24px; padding-block: 12px 0; }
+.author { color: var(--muted); font-size: 12px; }
+.clock { margin-left: auto; font: 11px var(--font-mono); color: var(--muted); }
+.run { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; padding: 7px 0 9px; font: 12px var(--font-mono); color: var(--muted); border-top: 1px solid var(--line); }
+.job { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); }

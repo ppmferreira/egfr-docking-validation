@@ -1,0 +1,760 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel EGFR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: sticky bar with project name and tabs; each tab opens with a one-line answer, then the evidence. */
+  :root {
+    --paper: #f3f5f6; --panel: #fff; --ink: #17232b; --muted: #5d6c76; --line: #d5dce0;
+    --crystal: #b8650a; --docked: #0b7c8c; --pass: #1d7a45; --fail: #a8382e; --warn: #9a6a00; --stage: #0f1a21;
+    --font-body: "Instrument Sans", system-ui, sans-serif; --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root { color-scheme: dark;
+    --paper: #11181d; --panel: #18222a; --ink: #e6edf0; --muted: #93a3ad; --line: #2b3943;
+    --crystal: #f0a04b; --docked: #46c2d3; --pass: #54c283; --fail: #ef7f72; --warn: #e0b23c; --stage: #0a1116; } }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.55 var(--font-body); }
+  .bar { border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  .in { max-width: 1180px; margin: 0 auto; padding-inline: 16px; }
+  .top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 24px; padding-block: 12px 0; }
+  h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+  .by { color: var(--muted); font-size: 12px; }
+  .live { margin-left: auto; font: 11px var(--font-mono); color: var(--muted); }
+  .shell { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 32px; max-width: 1380px; margin: 0 auto; padding-inline: 16px; }
+  nav { position: sticky; top: var(--barh, 72px); align-self: start; max-height: calc(100vh - var(--barh, 72px)); overflow-y: auto; padding-block: 20px 24px; display: grid; gap: 18px; }
+  .grp { display: grid; gap: 1px; }
+  .gt { font: 500 10.5px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 0 10px 5px; }
+  nav button { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; text-align: left; font: 500 13.5px var(--font-body); color: var(--muted); background: none; border: 0; border-left: 2px solid transparent; border-radius: 0 4px 4px 0; padding: 7px 10px; cursor: pointer; }
+  nav button:hover { color: var(--ink); background: color-mix(in srgb, var(--docked) 7%, transparent); }
+  nav button[aria-selected="true"] { color: var(--ink); border-left-color: var(--docked); background: color-mix(in srgb, var(--docked) 12%, transparent); }
+  nav .bd { font: 500 11px var(--font-mono); color: var(--muted); font-style: normal; display: inline-flex; align-items: center; }
+  nav .bd:empty { display: none; }
+  nav .bd .pulse { width: 7px; height: 7px; }
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    nav { position: static; max-height: none; padding-block: 10px 4px; display: flex; gap: 6px; overflow-x: auto; border-bottom: 1px solid var(--line); }
+    .grp { display: flex; gap: 2px; flex: none; } .gt { display: none; }
+    nav button { width: auto; white-space: nowrap; border-left: 0; border-bottom: 2px solid transparent; border-radius: 0; }
+    nav button[aria-selected="true"] { border-bottom-color: var(--docked); }
+  }
+  .run { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; padding: 7px 0 9px; font: 12px var(--font-mono); color: var(--muted); border-top: 1px solid var(--line); }
+  .run .job { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); }
+  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); animation: pulse 1.4s ease-in-out infinite; }
+  .idle { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); opacity: .5; display: inline-block; }
+  @keyframes pulse { 50% { opacity: .25; transform: scale(.8); } }
+  @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } .flash { animation: none !important; } }
+  .flash { animation: flash 1.6s ease-out; }
+  @keyframes flash { from { background: color-mix(in srgb, var(--docked) 28%, transparent); } to { background: transparent; } }
+  .toast { position: fixed; right: 16px; bottom: 16px; background: var(--ink); color: var(--paper); padding: 9px 14px; border-radius: 6px; font: 12px var(--font-mono); max-width: min(420px, calc(100vw - 32px)); opacity: 0; transform: translateY(8px); transition: opacity .25s, transform .25s; pointer-events: none; z-index: 10; }
+  .toast.on { opacity: 1; transform: none; }
+  .act { list-style: none; margin: 0; padding: 0; }
+  .act li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 14px; border-top: 1px solid var(--line); font: 12px var(--font-mono); }
+  .act li:first-child { border-top: 0; } .act .age { color: var(--muted); white-space: nowrap; } .act .f { overflow-wrap: anywhere; }
+  .guide p { margin: 0 0 10px; max-width: 74ch; } .guide p:last-child { margin: 0; }
+  .story { margin: 0; padding: 0; list-style: none; counter-reset: s; }
+  .story li { counter-increment: s; display: grid; grid-template-columns: 28px 1fr; gap: 2px 12px; padding: 12px 14px; border-top: 1px solid var(--line); }
+  .story li:first-child { border-top: 0; }
+  .story li::before { content: counter(s); font: 500 13px var(--font-mono); color: var(--muted); grid-row: 1 / 3; }
+  .story b { font-weight: 600; } .story span { color: var(--muted); max-width: 74ch; }
+  .steps a[data-tab] { margin-left: auto; white-space: nowrap; }
+  .info { padding: 12px 14px; min-height: 76px; font-size: 13px; }
+  .info b { font-weight: 600; } .info .k { font: 12px var(--font-mono); color: var(--muted); }
+  .meter { display: grid; gap: 4px; margin-bottom: 12px; } .meter:last-child { margin: 0; }
+  .meter .l { display: flex; justify-content: space-between; font: 12px var(--font-mono); color: var(--muted); }
+  .meter .t { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; } .meter .t i { display: block; height: 100%; background: var(--docked); transition: width .4s; }
+  pre.con { margin: 0; padding: 12px 14px; max-height: 340px; overflow: auto; font: 12px/1.5 var(--font-mono); background: var(--stage); color: #c3d0d6; border-radius: 0 0 6px 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .run a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+  nav button:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid var(--docked); outline-offset: -2px; }
+  nav .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-left: 6px; background: var(--warn); }
+  main { padding-block: 20px 48px; display: grid; gap: 18px; min-width: 0; align-content: start; }
+  section[hidden] { display: none; }
+  section { display: grid; gap: 16px; }
+  h2 { margin: 0; font-size: 16px; font-weight: 600; }
+  .lead { color: var(--muted); max-width: 72ch; margin: 0; }
+  .answer { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; border: 1px solid; border-radius: 6px; background: var(--panel); }
+  .answer.fail { border-color: var(--fail); } .answer.warn { border-color: var(--warn); } .answer.ok { border-color: var(--pass); } .answer.no { border-color: var(--line); } .answer.no .chip { color: var(--muted); }
+  .answer .chip { font: 500 11px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; padding: 4px 8px; border-radius: 3px; border: 1px solid; white-space: nowrap; margin-top: 2px; }
+  .answer.fail .chip { color: var(--fail); } .answer.warn .chip { color: var(--warn); } .answer.ok .chip { color: var(--pass); }
+  .answer p { margin: 0; max-width: 78ch; } .answer b { font-weight: 600; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; min-width: 0; }
+  .box > h3 { margin: 0; padding: 10px 14px; font: 500 11px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
+  .pad { padding: 14px; }
+  .steps { list-style: none; margin: 0; padding: 0; }
+  .steps li { display: flex; gap: 12px; align-items: baseline; padding: 9px 14px; border-top: 1px solid var(--line); }
+  .steps li:first-child { border-top: 0; }
+  .steps code { font: 12px var(--font-mono); color: var(--muted); min-width: 30px; }
+  .steps a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; cursor: pointer; }
+  .tag { margin-left: auto; font: 500 11px var(--font-mono); padding: 2px 7px; border-radius: 3px; border: 1px solid; white-space: nowrap; }
+  .tag.ok { color: var(--pass); } .tag.run { color: var(--warn); } .tag.no { color: var(--muted); } .tag.bad { color: var(--fail); }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; padding: 14px; }
+  .fact b { display: block; font: 500 22px var(--font-mono); letter-spacing: -.02em; }
+  .fact span { font-size: 12px; color: var(--muted); }
+  .tablewrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { padding: 8px 14px; text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font: 500 11px var(--font-mono); color: var(--muted); letter-spacing: .04em; }
+  td { font: 13px var(--font-mono); border-top: 1px solid var(--line); }
+  .ok { color: var(--pass); } .bad { color: var(--fail); } .near { color: var(--warn); }
+  tr.pose { cursor: pointer; } tr.pose:hover td { background: color-mix(in srgb, var(--docked) 8%, transparent); }
+  tr.pose.on td { background: color-mix(in srgb, var(--docked) 16%, transparent); }
+  tr.pose:focus-visible { outline: 2px solid var(--docked); outline-offset: -2px; }
+  .stage { background: var(--stage); border-radius: 6px; position: relative; overflow: hidden; aspect-ratio: 4/3; min-height: 320px; }
+  #vcx { position: absolute; inset: 0; }
+  .legend { position: absolute; left: 12px; bottom: 10px; display: flex; flex-wrap: wrap; gap: 4px 14px; font: 12px var(--font-mono); color: #c3d0d6; pointer-events: none; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+  .hint { position: absolute; right: 12px; top: 10px; font: 11px var(--font-mono); color: #7f929d; pointer-events: none; }
+  .split { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 820px) { .split { grid-template-columns: 1fr; } }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 12px 14px; align-items: center; }
+  label { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+  select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 3px 6px; }
+  input[type=checkbox] { accent-color: var(--docked); width: 15px; height: 15px; }
+  .note { color: var(--muted); font-size: 13px; } .note b { color: var(--ink); }
+  svg text { fill: var(--muted); font: 11px var(--font-mono); }
+  details { border-top: 1px solid var(--line); } details:first-of-type { border-top: 0; }
+  summary { padding: 11px 14px; cursor: pointer; font-weight: 500; }
+  details > div { padding: 0 14px 14px; color: var(--muted); max-width: 78ch; }
+  img.fig { max-width: 100%; height: auto; display: block; border-radius: 4px; background: #fff; }
+  .cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .cx { padding: 14px; display: grid; gap: 6px; }
+  .cx .nm { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .cx b { font: 500 15px var(--font-mono); } .cx .big { font: 500 26px var(--font-mono); letter-spacing: -.02em; }
+  .road { list-style: none; margin: 0; padding: 0; }
+  .road li { display: grid; grid-template-columns: 26px 1fr auto; gap: 4px 12px; padding: 12px 14px; border-top: 1px solid var(--line); align-items: baseline; }
+  .road li:first-child { border-top: 0; }
+  .road .n { font: 500 13px var(--font-mono); color: var(--muted); }
+  .road .why { grid-column: 2 / 4; color: var(--muted); font-size: 13px; max-width: 80ch; }
+  .road b { font-weight: 600; }
+  .files { font: 12px var(--font-mono); color: var(--muted); }
+  .cxwork { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; align-items: start; }
+  .cxlist { position: sticky; top: calc(var(--barh, 72px) + 14px); max-height: calc(100vh - var(--barh, 72px) - 28px); overflow-y: auto; }
+  .cxgt { display: grid; grid-template-columns: 1fr 52px 52px; gap: 8px; padding: 9px 12px 5px; font: 500 11px var(--font-mono); color: var(--muted); border-top: 1px solid var(--line); background: var(--paper); position: sticky; top: 0; z-index: 1; }
+  .cxgt span + span { text-align: right; }
+  .cxgt:first-child { border-top: 0; }
+  .cxrow { display: grid; grid-template-columns: 1fr 52px 52px; gap: 0 8px; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); border-left: 3px solid transparent; padding: 8px 12px 8px 9px; cursor: pointer; color: var(--ink); font: inherit; align-items: baseline; }
+  .cxrow:hover { background: color-mix(in srgb, var(--docked) 7%, transparent); }
+  .cxrow[aria-pressed="true"] { border-left-color: var(--docked); background: color-mix(in srgb, var(--docked) 13%, transparent); }
+  .cxrow b { font: 500 13.5px var(--font-mono); } .cxrow small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
+  .cxrow .n { font: 500 13px var(--font-mono); text-align: right; }
+  .cxrow .w { grid-column: 2 / 4; text-align: right; font-size: 12px; color: var(--muted); }
+  .cxrow:disabled { cursor: default; opacity: .6; } .cxrow:disabled:hover { background: none; }
+  .cxrow:focus-visible, .pchip:focus-visible, .cxlay:focus-visible { outline: 2px solid var(--docked); outline-offset: -2px; }
+  .cxmain { display: grid; gap: 12px; min-width: 0; }
+  .cxhd { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: flex-end; justify-content: space-between; }
+  .cxhd h2 { font-size: 24px; letter-spacing: -.01em; line-height: 1.15; } .cxhd h2 span { color: var(--muted); font-weight: 400; font-size: 15px; margin-left: 8px; }
+  .cxhd .sub { color: var(--muted); font-size: 13px; margin-top: 4px; max-width: 52ch; }
+  .tiles { display: flex; gap: 10px; flex-wrap: wrap; }
+  .tile { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 8px 14px 9px; min-width: 156px; }
+  .tile small { display: block; font: 11px var(--font-mono); color: var(--muted); }
+  .tile strong { display: block; font: 500 26px/1.2 var(--font-mono); letter-spacing: -.02em; }
+  .tile span { font-size: 12.5px; color: var(--muted); }
+  .cxstage { aspect-ratio: auto; min-height: 0; height: clamp(420px, calc(100vh - var(--barh, 72px) - 330px), 720px); }
+  .vtools { position: absolute; left: 12px; top: 10px; display: flex; flex-wrap: wrap; gap: 6px; z-index: 2; }
+  .vtools.vcam { left: auto; right: 12px; top: auto; bottom: 10px; }
+  .vtools button { display: inline-flex; align-items: center; gap: 7px; font: 500 12.5px var(--font-body); color: #9fb0b9; background: rgba(10,17,22,.8); border: 1px solid #2b3943; border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+  .vtools button i { width: 10px; height: 10px; border-radius: 2px; opacity: .45; }
+  .vtools button:hover, .vtools button[aria-pressed="true"] { color: #fff; border-color: #586c78; } .vtools button[aria-pressed="true"] i { opacity: 1; }
+  .vtools button:focus-visible { outline: 2px solid var(--docked); outline-offset: 1px; }
+  .cxposes { display: grid; gap: 0; }
+  .pgrp { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 12px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); }
+  .pgrp:first-child { border-top: 0; }
+  .pl2 b { display: block; font-weight: 600; } .pl2 small { color: var(--muted); font-size: 12px; }
+  .pchips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pchip { min-width: 46px; padding: 4px 6px 5px; border: 1px solid var(--line); border-bottom-width: 3px; border-radius: 5px; background: var(--paper); color: var(--ink); cursor: pointer; text-align: center; font: inherit; line-height: 1.2; }
+  .pchip b { display: block; font: 500 13px var(--font-mono); } .pchip small { font: 11px var(--font-mono); }
+  .pchip.ok { border-bottom-color: var(--pass); } .pchip.near { border-bottom-color: var(--warn); } .pchip.bad { border-bottom-color: var(--fail); }
+  .pchip small.ok, .pchip small.near, .pchip small.bad { color: inherit; }
+  .pchip[aria-pressed="true"] { background: color-mix(in srgb, var(--docked) 18%, var(--paper)); border-color: var(--docked); }
+  .pchip[aria-pressed="true"].ok { border-bottom-color: var(--pass); } .pchip[aria-pressed="true"].near { border-bottom-color: var(--warn); } .pchip[aria-pressed="true"].bad { border-bottom-color: var(--fail); }
+  .pinfo { padding: 10px 14px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); display: grid; gap: 3px; }
+  .pinfo b { color: var(--ink); font-weight: 600; }
+  .player { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+  .player[hidden] { display: none; }
+  .player input[type=range] { flex: 1; min-width: 120px; accent-color: var(--docked); }
+  .player .pl { font: 12px var(--font-mono); color: var(--muted); min-width: 190px; text-align: right; }
+  .play { font: 500 13px var(--font-body); padding: 6px 14px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 6px; cursor: pointer; min-width: 112px; }
+  .play:hover { border-color: var(--docked); } .play:focus-visible { outline: 2px solid var(--docked); outline-offset: 1px; }
+  .cxhow summary { padding: 11px 14px; } .cxhow > div { padding: 0 14px 14px; color: var(--muted); max-width: 84ch; display: grid; gap: 8px; } .cxhow p { margin: 0; } .cxhow b { color: var(--ink); font-weight: 600; }
+  @media (max-width: 1180px) {
+    .cxwork { grid-template-columns: minmax(0, 1fr); }
+    .cxlist { position: static; max-height: 260px; }
+    .cxstage { height: 440px; }
+    .pgrp { grid-template-columns: minmax(0, 1fr); gap: 6px; } .player { flex-wrap: wrap; } .player .pl { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<div class="bar"><div class="in">
+  <div class="top"><h1>Triagem virtual de inibidores de EGFR</h1><span class="by">Pedro Paulo de Melo Ferreira</span><span class="live" id="live">carregando…</span></div>
+  <div class="run" id="run" aria-live="polite"></div>
+</div></div>
+<div class="toast" id="toast" role="status"></div>
+<div class="shell">
+<nav role="tablist" id="tabs" aria-label="Seções do painel"></nav>
+<main>
+
+<section id="t-guia">
+  <div class="answer" id="guiaNow"></div>
+  <div class="box"><h3>O projeto em uma frase</h3><div class="pad guide">
+    <p>Estamos testando se um programa de computador consegue <b>prever como um remédio se encaixa numa proteína ligada ao câncer</b> (a EGFR). Antes de usar o programa para valer, precisamos provar que ele acerta casos que já conhecemos.</p>
+  </div></div>
+  <div class="box"><h3>O que já aconteceu, em 5 passos</h3><ol class="story" id="story"></ol></div>
+  <div class="box"><h3>O que isso significa</h3><div class="pad guide">
+    <p><b>Não é fracasso.</b> Descobrir que um método ainda não é confiável, antes de publicar números bonitos e errados, é o trabalho certo. Um resultado negativo bem documentado vale muito em portfólio científico.</p>
+    <p><b>Você não precisa decidir nada agora.</b> O próximo passo é continuar validando. Se algo estiver confuso, escreva no chat qual palavra ou qual tela, que eu explico.</p>
+  </div></div>
+  <div class="box"><h3>Como usar este painel</h3><ul class="steps">
+    <li><span><b>Resumo</b>: situação geral e as etapas do projeto.</span><a data-tab="resumo" href="#">abrir</a></li>
+    <li><span><b>Validação</b>: o teste que decide se o programa é confiável.</span><a data-tab="valid" href="#">abrir</a></li>
+    <li><span><b>Complexos</b>: ver cada complexo em 3D, com o cristal, o DiffDock e o Vina juntos.</span><a data-tab="cx" href="#">abrir</a></li>
+    <li><span><b>Docking dos 16</b>: as notas dos 16 compostos (ainda não confiáveis).</span><a data-tab="dock" href="#">abrir</a></li>
+    <li><span><b>Próximos passos</b>: o que falta fazer.</span><a data-tab="next" href="#">abrir</a></li>
+  </ul></div>
+</section>
+
+<section id="t-resumo" hidden>
+  <div class="answer" id="verdict"></div>
+  <div class="grid">
+    <div class="box"><h3>Etapas do projeto</h3><ul class="steps" id="steps"></ul></div>
+    <div style="display:grid;gap:16px">
+      <div class="box"><h3>Números principais</h3><div class="facts" id="facts"></div></div>
+      <div class="box"><h3>Atividade recente</h3><ul class="act" id="act"></ul></div>
+    </div>
+  </div>
+  <div class="box"><h3>Glossário (clique para abrir)</h3>
+    <details><summary>EGFR e erlotinibe</summary><div>A EGFR é uma proteína da superfície das células. Quando fica hiperativa, pode estimular a multiplicação de tumores. O erlotinibe é um fármaco que se encaixa num bolsão dela e a desliga.</div></details>
+    <details><summary>Docking e score</summary><div>Docking é o programa (aqui, AutoDock Vina) que tenta encaixar uma molécula no bolsão da proteína. O score, em kcal/mol, é a nota do encaixe: quanto mais negativo, melhor o encaixe previsto. Não é afinidade medida.</div></details>
+    <details><summary>IC50 e pIC50</summary><div>IC50 é a concentração de uma molécula que inibe metade da proteína em laboratório. pIC50 é uma escala mais fácil de ler: quanto maior, mais potente. Acima de 7 é potente.</div></details>
+    <details><summary>RMSD</summary><div>Distância média, em Ångströms (Å), entre os átomos da pose prevista e os da pose real no cristal. Até 2 Å conta como acerto. Um Å é cerca do tamanho de um átomo.</div></details>
+    <details><summary>Redocking</summary><div>Teste de sanidade: tirar o fármaco da proteína, pedir ao programa para recolocá-lo sem dizer onde, e comparar com a posição real. Se ele não acerta o caso conhecido, não dá para confiar nos casos desconhecidos.</div></details>
+    <details><summary>Pose 1 e pose melhor</summary><div>O Vina devolve 9 poses ordenadas pelo score. A pose 1 é a de maior score, e é a que vale para a validação. A "melhor pose" é a mais próxima do cristal, em qualquer posição do ranking.</div></details>
+  </div>
+</section>
+
+<section id="t-valid" hidden>
+  <div class="answer" id="validVerdict"></div>
+  <div class="files">Ir para: <a href="#v-complexos" class="lnk">outros complexos</a> · <a href="#v-varredura" class="lnk">varredura de parâmetros</a></div>
+  <h2>Vina contra DiffDock</h2>
+  <p class="lead">O mesmo teste nos mesmos complexos. O RMSD é a distância à pose do cristal, e vale a pose que cada método escolheria como a melhor (limite de 2 Å).</p>
+  <div class="box"><h3>Pose escolhida por cada método</h3><div class="tablewrap"><table><thead><tr><th>Estrutura</th><th>Ligante</th><th>Vina RMSD Å</th><th>DiffDock RMSD Å</th><th>Melhor pose do DiffDock Å</th></tr></thead><tbody id="cmpRows"></tbody></table></div>
+  <div class="pad note" id="cmpNote"></div></div>
+  <h2 id="v-complexos">Outros complexos de EGFR (teste de generalização)</h2>
+  <p class="lead">O mesmo protocolo (caixa e exhaustiveness fixados antes) aplicado a outras estruturas cristalográficas. Cada cartão é uma estrutura com 3 seeds do Vina.</p>
+  <div class="cards" id="cards"></div>
+  <div class="box"><h3>Resultados por estrutura e caixa</h3><div class="tablewrap"><table><thead><tr><th>Estrutura</th><th>Ligante</th><th>Caixa Å</th><th>RMSD médio Å</th><th>Acertos</th><th>Melhor pose</th></tr></thead><tbody id="mrows"></tbody></table></div></div>
+  <h2 id="v-varredura">Varredura de parâmetros (só erlotinibe)</h2>
+  <p class="lead">Quais configurações do Vina aproximam a pose 1 do cristal. A linha tracejada marca o limite de 2 Å. Ajustar no mesmo caso que se quer validar pode enganar, por isso o teste acima.</p>
+  <div class="box"><h3 id="sweepTitle">Varredura</h3><div class="pad"><div style="height:10px;background:var(--line);border-radius:5px;overflow:hidden"><div id="prog" style="height:100%;width:0;background:var(--docked)"></div></div></div></div>
+  <div class="box"><h3>RMSD médio da pose 1, por configuração</h3><div class="pad tablewrap" id="chart"></div></div>
+  <div class="box"><h3>Tabela da varredura</h3><div class="tablewrap"><table><thead><tr><th>Águas</th><th>Caixa Å</th><th>Exhaust.</th><th>Seeds</th><th>RMSD médio Å</th><th>Acertos</th><th>Melhor RMSD Å</th></tr></thead><tbody id="srows"></tbody></table></div></div>
+</section>
+
+<section id="t-live" hidden>
+  <div class="answer" id="liveNow"></div>
+  <div class="grid">
+    <div class="box"><h3>Placa de vídeo (GPU)</h3><div class="pad" id="gpu"></div></div>
+    <div class="box"><h3>Em execução</h3><ul class="steps" id="liveJobs"></ul></div>
+  </div>
+  <div id="consoles" style="display:grid;gap:16px"></div>
+</section>
+
+<section id="t-cx" hidden>
+  <div class="answer" id="cxNow"></div>
+  <div class="cxwork">
+    <div class="box cxlist"><h3>Complexos</h3><div id="cxList"></div></div>
+    <div class="cxmain">
+      <div class="cxhd" id="cxHd"></div>
+      <div class="stage cxstage"><div id="vcx"></div>
+        <div class="vtools" role="toolbar" aria-label="Camadas">
+          <button type="button" data-lay="cry" aria-pressed="true"><i style="background:#f0a04b"></i>Cristal</button>
+          <button type="button" data-lay="dd" aria-pressed="true"><i style="background:#46c2d3"></i>DiffDock</button>
+          <button type="button" data-lay="vina" aria-pressed="false"><i style="background:#d96fb0"></i>Vina</button>
+          <button type="button" data-lay="res" aria-pressed="true">Bolsão</button>
+        </div>
+        <div class="vtools vcam" role="toolbar" aria-label="Câmera">
+          <button type="button" id="cxCamPocket">Bolsão</button><button type="button" id="cxCamAll">Proteína inteira</button>
+        </div>
+        <div class="hint" id="cxHint">arraste para girar · role para zoom · passe o mouse para ver nomes</div>
+      </div>
+      <div class="box cxposes" id="cxPoses">
+        <div class="pgrp"><div class="pl2"><b>DiffDock</b><small>posição por confiança</small></div><div class="pchips" id="cxDDChips"></div></div>
+        <div class="pgrp"><div class="pl2"><b>Vina</b><small>seed 1, por score</small></div><div class="pchips" id="cxVChips"></div></div>
+        <div class="pinfo" id="cxInfo"></div>
+      </div>
+      <div class="player" id="cxPlayer" hidden>
+        <button id="cxPlay" type="button" class="play">Ver o encaixe</button>
+        <input id="cxStep" type="range" min="0" max="0" value="0" disabled aria-label="Passo da difusão">
+        <span class="pl" id="cxLabel"></span>
+      </div>
+    </div>
+  </div>
+  <details class="box cxhow"><summary>Como cada método foi rodado</summary><div id="cxHow"></div></details>
+</section>
+
+<section id="t-dock" hidden>
+  <div class="answer warn"><span class="chip">Cuidado</span><p>Estes scores <b>ainda não são confiáveis</b>, porque o protocolo não foi validado. Servem para estudar o fluxo, não para concluir qual composto é melhor.</p></div>
+  <div class="grid">
+    <div class="box"><h3>Score do Vina × pIC50</h3><div class="pad" id="scatter"></div></div>
+    <div class="box"><h3>16 compostos, do melhor ao pior score</h3><div class="tablewrap"><table><thead><tr><th>ChEMBL</th><th>Score</th><th>pIC50</th><th>IC50 nM</th></tr></thead><tbody id="drows"></tbody></table></div></div>
+  </div>
+</section>
+
+<section id="t-chem" hidden>
+  <p class="lead">Espaço químico dos compostos do ChEMBL: peso molecular contra logP, colorido pela potência (pIC50).</p>
+  <div class="box"><div class="pad"><img class="fig" src="/figures/egfr_chemical_space.png" alt="Espaço químico dos compostos de EGFR"></div></div>
+</section>
+
+<section id="t-next" hidden>
+  <p class="lead">O que falta fazer, em ordem. As primeiras etapas decidem se o restante tem valor científico.</p>
+  <div class="box"><h3>Roteiro</h3><ul class="road" id="road"></ul></div>
+</section>
+
+</main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
+<script>
+const TABS = [['cx', 'Complexos'], ['valid', 'Validação'], ['dock', 'Docking dos 16'], ['chem', 'Espaço químico'], ['guia', 'Comece aqui'], ['resumo', 'Resumo'], ['next', 'Próximos passos'], ['live', 'Ao vivo']];
+const $ = id => document.getElementById(id);
+const f2 = x => Number(x).toFixed(2);
+let D = null, tab = 'cx';
+
+const GROUPS = [['Resultados', ['cx', 'valid', 'dock', 'chem']], ['Entender', ['guia', 'resumo', 'next']], ['Acompanhar', ['live']]];
+const TITLE = Object.fromEntries(TABS);
+const nav = $('tabs');
+GROUPS.forEach(([name, ids]) => {
+  const g = document.createElement('div'); g.className = 'grp'; g.innerHTML = `<div class="gt">${name}</div>`;
+  ids.forEach(id => {
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'tab'); b.dataset.id = id;
+    b.innerHTML = `<span>${TITLE[id]}</span><i class="bd" data-bd="${id}"></i>`;
+    b.addEventListener('click', () => show(id)); g.appendChild(b);
+  });
+  nav.appendChild(g);
+});
+const setBar = () => document.documentElement.style.setProperty('--barh', document.querySelector('.bar').offsetHeight + 'px');
+setBar(); addEventListener('resize', setBar);
+function badge(id, html) { const el = nav.querySelector(`[data-bd="${id}"]`); if (el && el.innerHTML !== html) el.innerHTML = html; }
+function updateBadges(jobs) {
+  jobs = jobs || (D && D.jobs) || [];
+  badge('live', jobs.length ? '<i class="pulse"></i>' : '');
+  badge('valid', jobs.some(j => /^04/.test(j.name)) ? '<i class="pulse"></i>' : '');
+  const b = D && D.blind;
+  if (b && b.selected.length) {
+    const done = new Set(b.rows.map(r => r.pdb)).size;
+    badge('cx', jobs.some(j => /^08/.test(j.name)) ? `<i class="pulse"></i>&nbsp;${done}/${b.selected.length}` : `${done}/${b.selected.length}`);
+  }
+}
+function show(id) {
+  if (!TABS.some(t => t[0] === id)) id = 'cx';
+  tab = id;
+  TABS.forEach(([t]) => $('t-' + t).hidden = t !== id);
+  nav.querySelectorAll('button').forEach(b => b.setAttribute('aria-selected', b.dataset.id === id));
+  history.replaceState(null, '', '#' + id);
+  window.scrollTo(0, 0);
+  if (id === 'live') refreshLive();
+  if (id === 'cx') ensureCx();
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest('a.lnk, a[data-tab]');
+  if (!a) return;
+  e.preventDefault();
+  if (a.dataset.tab) show(a.dataset.tab);
+  else { const el = document.querySelector(a.getAttribute('href')); if (el) el.scrollIntoView(); }
+});
+
+function cls(rmsd) { return rmsd <= 2 ? 'ok' : rmsd <= 3 ? 'near' : 'bad'; }
+function groupBy(rows, keyFn) { const g = {}; rows.forEach(r => (g[keyFn(r)] = g[keyFn(r)] || []).push(r)); return g; }
+function setAnswer(el, kind, chip, html) { el.className = 'answer ' + kind; el.innerHTML = `<span class="chip">${chip}</span><p>${html}</p>`; }
+
+function multiSummary() {
+  const rows = D.multi.rows.filter(r => r.box_A === 20), g = groupBy(rows, r => r.pdb);
+  return Object.entries(g).map(([pdb, a]) => ({ pdb, ligand: a[0].ligand, n: a.length,
+    mean: a.reduce((s, x) => s + x.top_rmsd, 0) / a.length, pass: a.filter(x => x.top_pass).length,
+    best: a.reduce((s, x) => s + x.best_rmsd, 0) / a.length }));
+}
+function verdictParts() {
+  const ms = multiSummary(), complete = ms.length >= 3 && D.multi.rows.length >= D.multi.total;
+  const okAll = ms.length >= 3 && ms.every(m => m.pass >= 2);
+  const nOk = ms.filter(m => m.pass >= 2).length;
+  return { ms, complete, okAll, nOk };
+}
+
+function renderGuia() {
+  const v = verdictParts(), top = D.redocking && D.redocking.poses[0];
+  setAnswer($('guiaNow'), v.okAll ? 'ok' : 'warn', 'Onde estamos',
+    v.okAll ? 'O teste de confiança passou. Os próximos passos já podem usar os scores.'
+            : 'Estamos na fase de <b>testar se o programa é confiável</b>. Ainda não é, e por isso não tiramos conclusões sobre os 16 compostos.');
+  const m = v.ms.map(x => `${x.ligand} ${f2(x.mean)} Å`).join(', ');
+  $('story').innerHTML = [
+    ['Reunimos os dados', 'Baixamos a estrutura 3D da proteína EGFR e 236 moléculas já testadas em laboratório.'],
+    ['Pedimos notas ao programa', 'Escolhemos 16 moléculas e o programa (AutoDock Vina) deu uma nota de encaixe a cada uma.'],
+    ['Desconfiamos das notas', 'Fizemos um teste: tirar o erlotinibe da proteína e pedir ao programa para recolocá-lo. A resposta certa já é conhecida, vem do cristal.'],
+    ['O programa errou', top ? `A primeira tentativa dele ficou a ${f2(top.rmsd)} Å da posição real. Acertar significa ficar a até 2 Å.` : 'Ainda sem resultado.'],
+    ['Tentamos melhorar e testar em outros remédios', v.ms.length ? `Mudamos configurações e testamos outros fármacos. Resultado: ${m}. Chegou perto, mas ainda fora do limite.` : 'Em andamento.']
+  ].map(([t, s]) => `<li><b>${t}</b><span>${s}</span></li>`).join('');
+}
+
+function renderResumo() {
+  const v = verdictParts(), r = D.redocking, top = r && r.poses[0];
+  const el = $('verdict');
+  if (v.okAll) setAnswer(el, 'ok', 'Validado', 'O protocolo acertou a pose cristalográfica em <b>todos os complexos testados</b>. Os scores dos compostos ficam interpretáveis, ainda com cautela.');
+  else setAnswer(el, 'fail', 'Não validado',
+    `O protocolo de docking <b>ainda não reproduz de forma confiável</b> a pose cristalográfica dos fármacos conhecidos. ` +
+    (top ? `No erlotinibe, a pose 1 ficou a <b>${f2(top.rmsd)} Å</b> do cristal (limite 2 Å). ` : '') +
+    (v.ms.length ? `Em ${v.ms.length} complexos com a caixa de 20 Å, <b>${v.nOk}</b> passaram. ` : '') +
+    `Enquanto isso, os scores dos 16 compostos não devem ser interpretados.` +
+    ` <a href="#valid" data-tab="valid">Ver a validação</a>`);
+  $('steps').innerHTML = D.steps.map(s => {
+    const running = !s.done && (s.id === '04c' && D.sweep.rows.length > 0 || s.id === '04d' && D.multi.rows.length > 0);
+    const link = s.id.startsWith('04') && s.id !== '04' ? ' data-tab="valid"' : s.id === '04' ? ' data-tab="dock"' : s.id === '02' ? ' data-tab="chem"' : '';
+    const name = link ? `<a${link} href="#">${s.name}</a>` : s.name;
+    return `<li><code>${s.id}</code><span>${name}</span><span class="tag ${s.done ? 'ok' : running ? 'run' : 'no'}">${s.done ? 'concluído' : running ? 'rodando' : 'pendente'}</span></li>`;
+  }).join('');
+  const passes = D.sweep.rows.filter(x => x.top_pass).length;
+  $('facts').innerHTML = [
+    ['236', 'compostos do ChEMBL (únicos)'],
+    ['16', 'compostos no docking'],
+    [top ? f2(top.rmsd) + ' Å' : '–', 'RMSD da pose 1 no erlotinibe'],
+    [`${v.nOk}/${v.ms.length || 3}`, 'complexos que acertaram (caixa 20 Å)'],
+    [`${D.sweep.rows.length}/${D.sweep.total}`, 'execuções da varredura'],
+    [`${D.multi.rows.length}/${D.multi.total}`, 'execuções em outros complexos']
+  ].map(([n, l]) => `<div class="fact"><b>${n}</b><span>${l}</span></div>`).join('');
+}
+
+function renderValid() {
+  const v = verdictParts(), el = $('validVerdict');
+  if (!D.multi.rows.length) setAnswer(el, 'warn', 'Rodando', 'Os testes em outros complexos ainda não produziram resultados.');
+  else if (v.okAll) setAnswer(el, 'ok', 'Passou', 'A configuração de caixa 20 Å acertou em todos os complexos.');
+  else setAnswer(el, 'fail', v.complete ? 'Não passou' : 'Parcial',
+    `Com a caixa de 20 Å, <b>${v.nOk} de ${v.ms.length}</b> estruturas tiveram pelo menos 2 seeds acertando. ` +
+    (v.complete ? 'O resultado no erlotinibe não se repete nos outros ligantes.' : `Faltam ${D.multi.total - D.multi.rows.length} execuções.`));
+  $('cards').innerHTML = v.ms.map(m => `<div class="box cx"><div class="nm"><b>${m.pdb}</b><span class="tag ${m.pass >= 2 ? 'ok' : m.mean <= 3 ? 'run' : 'bad'}">${m.pass >= 2 ? 'acertou' : m.mean <= 3 ? 'quase' : 'errou'}</span></div>
+    <span class="note">${m.ligand}</span><div class="big ${cls(m.mean)}">${f2(m.mean)} Å</div>
+    <span class="note">RMSD médio da pose 1 · ${m.pass} de ${m.n} seeds ≤ 2 Å</span></div>`).join('') ||
+    '<div class="box pad note">Aguardando as primeiras execuções.</div>';
+  const g = groupBy(D.multi.rows, r => r.pdb + '|' + r.ligand + '|' + r.box_A);
+  $('mrows').innerHTML = Object.entries(g).map(([k, a]) => {
+    const [pdb, lig, box] = k.split('|'), mean = a.reduce((s, x) => s + x.top_rmsd, 0) / a.length;
+    return `<tr><td>${pdb}</td><td>${lig}</td><td>${box}</td><td class="${cls(mean)}">${f2(mean)}</td><td>${a.filter(x => x.top_pass).length}/${a.length}</td><td>${f2(a.reduce((s, x) => s + x.best_rmsd, 0) / a.length)} Å, posição ${(a.reduce((s, x) => s + x.best_rank, 0) / a.length).toFixed(1)}</td></tr>`;
+  }).join('') || '<tr><td colspan="6">Aguardando.</td></tr>';
+  renderCompare();
+  renderSweep();
+}
+function renderCompare() {
+  const dd = D.diffdock || [], g = groupBy(dd, r => r.pdb);
+  const vina = Object.fromEntries(multiSummary().map(m => [m.pdb, m]));
+  $('cmpRows').innerHTML = Object.entries(g).map(([pdb, a]) => {
+    const r1 = a.find(r => r.rank === 1) || a[0], best = a.reduce((x, y) => y.rmsd < x.rmsd ? y : x), v = vina[pdb];
+    return `<tr><td>${pdb}</td><td>${r1.ligand}</td><td class="${v ? cls(v.mean) : ''}">${v ? f2(v.mean) : '–'}</td><td class="${cls(r1.rmsd)}">${f2(r1.rmsd)}</td><td>${f2(best.rmsd)} (posição ${best.rank})</td></tr>`;
+  }).join('') || '<tr><td colspan="5">Aguardando o DiffDock.</td></tr>';
+  $('cmpNote').innerHTML = dd.length ? '<b>Cuidado:</b> as estruturas 1M17, 4WKQ e 1XKK são antigas e provavelmente fazem parte dos dados de treino do DiffDock. O acerto aqui pode ser em parte memória do modelo. O teste que decide é com complexos publicados depois do treino dele.' : '';
+}
+
+function renderSweep() {
+  const S = D.sweep, rows = S.rows, g = groupBy(rows, r => `${r.waters}|${r.box_A}|${r.exhaustiveness}`);
+  const sums = Object.entries(g).map(([k, a]) => { const [w, b, e] = k.split('|');
+    return { w, b: +b, e: +e, n: a.length, mean: a.reduce((s, x) => s + x.top_rmsd, 0) / a.length, pass: a.filter(x => x.top_pass).length, best: Math.min(...a.map(x => x.best_rmsd)) }; });
+  $('sweepTitle').textContent = S.done ? 'Varredura concluída' : `Varredura em andamento: ${rows.length} de ${S.total} execuções`;
+  $('prog').style.width = (100 * rows.length / S.total) + '%';
+  $('srows').innerHTML = sums.map(s => `<tr><td>${s.w}</td><td>${s.b}</td><td>${s.e}</td><td>${s.n}</td><td class="${cls(s.mean)}">${f2(s.mean)}</td><td>${s.pass}/${s.n}</td><td>${f2(s.best)}</td></tr>`).join('') || '<tr><td colspan="7">Aguardando.</td></tr>';
+  if (!sums.length) { $('chart').innerHTML = ''; return; }
+  const W = 640, rowH = 22, L = 150, H = sums.length * rowH + 30, mx = Math.max(10, ...sums.map(s => s.mean)), sc = x => L + (W - L - 20) * x / mx;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:480px;max-width:${W}px">`;
+  sums.forEach((s, i) => { const y = 12 + i * rowH;
+    svg += `<text x="0" y="${y + 11}">${s.w} · ${s.b} Å · ex ${s.e}</text><rect x="${L}" y="${y}" width="${sc(s.mean) - L}" height="14" fill="${s.mean <= 2 ? 'var(--pass)' : 'var(--fail)'}" opacity=".8"/><text x="${sc(s.mean) + 6}" y="${y + 11}">${f2(s.mean)}</text>`; });
+  svg += `<line x1="${sc(2)}" x2="${sc(2)}" y1="4" y2="${H - 14}" stroke="var(--ink)" stroke-dasharray="4 3"/><text x="${sc(2) - 4}" y="${H - 2}" text-anchor="end">2 Å</text></svg>`;
+  $('chart').innerHTML = svg;
+}
+
+// ---- Complexos: one workspace for the 3 development complexes and the 11 blind-test ones ----
+const CXS = { pdb: null, ddRank: 1, vPose: 1, show: { cry: true, dd: true, vina: false, res: true }, cache: {}, viewer: null,
+  framed: null, frames: null, framesRank: null, framesTxt: null, anim: false, timer: null, frame: 0, ids: {}, hover: null };
+const COL = { cry: '#f0a04b', dd: '#46c2d3', vina: '#d96fb0' };
+const mean = a => a.reduce((s, x) => s + x, 0) / a.length;
+const how = r => r <= 2 ? 'sobre o cristal' : r <= 3 ? 'perto do cristal' : 'longe do cristal';
+function parseFrames(text) {
+  return text.split(/^ENDMDL.*$/m).map(b => b.split('\n').filter(l => /^(ATOM|HETATM)/.test(l))
+    .map(l => [parseFloat(l.slice(30, 38)), parseFloat(l.slice(38, 46)), parseFloat(l.slice(46, 54))])).filter(f => f.length);
+}
+const cen = pts => pts.reduce((a, p) => [a[0] + p[0], a[1] + p[1], a[2] + p[2]], [0, 0, 0]).map(x => x / pts.length);
+
+function cxEntries() {
+  const ms = multiSummary(), dd = D.diffdock || [];
+  const train = [...new Set(dd.map(r => r.pdb))].map(pdb => {
+    const r1 = dd.find(r => r.pdb === pdb && r.rank === 1) || dd.find(r => r.pdb === pdb), v = ms.find(m => m.pdb === pdb);
+    return { pdb, group: 'train', lig: r1.ligand, name: r1.ligand, dd: r1.rmsd, vina: v ? v.mean : null, vpass: v ? v.pass : null, vn: v ? v.n : null };
+  });
+  const B = D.blind || { selected: [], rows: [] };
+  const blind = B.selected.map(s => {
+    const r = B.rows.filter(x => x.pdb === s.pdb), v = r.filter(x => x.method === 'vina'), d = r.find(x => x.method === 'diffdock');
+    return { pdb: s.pdb, group: 'blind', lig: s.comp, name: s.name, atoms: s.heavy_atoms, res: s.resolution, pending: !r.length,
+      skipped: r.some(x => x.method === 'skipped'), dd: d ? d.top_rmsd : null, vina: v.length ? mean(v.map(x => x.top_rmsd)) : null,
+      vpass: v.length ? v.filter(x => x.top_rmsd <= 2).length : null, vn: v.length || null };
+  });
+  return [...train, ...blind];
+}
+function cxBanner(E) {
+  const tr = E.filter(e => e.group === 'train'), bl = E.filter(e => e.group === 'blind'), bv = bl.filter(e => !e.pending && !e.skipped);
+  const ddOk = a => a.filter(e => e.dd !== null && e.dd <= 2).length, vOk = a => a.filter(e => e.vpass !== null && e.vpass >= 2).length;
+  const running = D.jobs.some(j => /^08/.test(j.name)), total = bl.length;
+  if (!tr.length && !bv.length) { setAnswer($('cxNow'), 'no', 'Sem resultado', 'Rode scripts/06_diffdock.py e scripts/04d_redock_multi.py.'); return; }
+  setAnswer($('cxNow'), running ? 'warn' : 'ok', bv.length ? `${bv.length} de ${total} cegos` : `${tr.length} complexos`,
+    `<b>Complexos de treino:</b> DiffDock acertou ${ddOk(tr)} de ${tr.length}, Vina ${vOk(tr)} de ${tr.length}. ` +
+    (bv.length ? `<b>Complexos novos (cegos):</b> DiffDock ${ddOk(bv)} de ${bv.length}, Vina ${vOk(bv)} de ${bv.length}${running ? ', ainda rodando' : ''}. ` : '') +
+    `Acertar é ficar a até 2 Å do cristal. O Vina recebe a posição do bolsão; o DiffDock procura na proteína inteira.`);
+}
+function cxNum(v) { return v === null || v === undefined ? '<span class="n">–</span>' : `<span class="n ${cls(v)}">${f2(v)}</span>`; }
+function renderCxList(E) {
+  const grp = (title, items) => items.length ? `<div class="cxgt"><span>${title}</span><span>DiffDock</span><span>Vina</span></div>` +
+    items.map(e => {
+      const sel = e.pdb === CXS.pdb, dis = e.skipped || e.pending;
+      const sub = e.skipped ? 'descartado' : e.pending ? 'aguardando' : e.lig;
+      return `<button type="button" class="cxrow" data-pdb="${e.pdb}" aria-pressed="${sel}" ${dis ? 'disabled' : ''} title="${(e.name || '').replace(/"/g, '')}">` +
+        `<span><b>${e.pdb}</b><small>${sub}</small></span>${dis ? '<span class="w"></span>' : cxNum(e.dd) + cxNum(e.vina)}</button>`;
+    }).join('') : '';
+  $('cxList').innerHTML = grp('Treino', E.filter(e => e.group === 'train')) + grp('Cegos (pós-2021)', E.filter(e => e.group === 'blind'));
+}
+function renderCxHead(E) {
+  const e = E.find(x => x.pdb === CXS.pdb); if (!e) { $('cxHd').innerHTML = ''; return; }
+  const kind = e.group === 'train' ? 'Estrutura antiga, provavelmente nos dados de treino do DiffDock.' : `Publicada depois do treino do DiffDock${e.res ? ` · ${e.res} Å de resolução` : ''}.`;
+  const dv = e.dd === null ? '–' : f2(e.dd) + ' Å', vv = e.vina === null ? '–' : f2(e.vina) + ' Å';
+  $('cxHd').innerHTML = `<div><h2>${e.pdb}<span>${e.lig}</span></h2><div class="sub">${kind}</div></div>` +
+    `<div class="tiles"><div class="tile"><small>DiffDock · pose 1</small><strong class="${e.dd === null ? '' : cls(e.dd)}">${dv}</strong><span>${e.dd === null ? 'sem resultado' : e.dd <= 2 ? 'acertou' : 'errou'}</span></div>` +
+    `<div class="tile"><small>Vina · média de ${e.vn || 3} seeds</small><strong class="${e.vina === null ? '' : cls(e.vina)}">${vv}</strong><span>${e.vn ? `${e.vpass} de ${e.vn} seeds ≤ 2 Å` : 'sem resultado'}</span></div></div>`;
+}
+function renderCxPoses() {
+  const C = CXS.cache[CXS.pdb]; if (!C) return;
+  const chip = (k, n, r, sel) => `<button type="button" class="pchip ${cls(r)}" data-k="${k}" data-n="${n}" aria-pressed="${sel}" title="RMSD ${f2(r)} Å"><b>${n}</b><small>${f2(r)}</small></button>`;
+  $('cxDDChips').innerHTML = C.diffdock.map(p => chip('dd', p.rank, p.rmsd, p.rank === CXS.ddRank)).join('') || '<span class="note">sem poses ainda</span>';
+  $('cxVChips').innerHTML = C.vina.map(p => chip('vina', p.pose, p.rmsd, p.pose === CXS.vPose)).join('') || '<span class="note">sem poses ainda</span>';
+  const d = C.diffdock.find(p => p.rank === CXS.ddRank), v = C.vina.find(p => p.pose === CXS.vPose), L = [];
+  if (d) L.push(`<span><b>DiffDock, posição ${d.rank}:</b> ${f2(d.rmsd)} Å, ${how(d.rmsd)}${d.confidence === null ? '' : ` · confiança ${f2(d.confidence)}`}. ${d.rank === 1 ? 'É a pose que o DiffDock escolheria.' : 'O DiffDock escolheria a posição 1.'}</span>`);
+  if (v) L.push(`<span><b>Vina, pose ${v.pose}:</b> ${f2(v.rmsd)} Å, ${how(v.rmsd)} · score ${f2(v.score)} kcal/mol. ${v.pose === 1 ? 'É a pose que o Vina escolheria.' : 'O Vina escolheria a pose 1.'}</span>`);
+  $('cxInfo').innerHTML = L.join('');
+  $('cxPlayer').hidden = !C.has_traj;
+  document.querySelectorAll('#t-cx .vtools [data-lay]').forEach(b => b.setAttribute('aria-pressed', String(CXS.show[b.dataset.lay])));
+}
+function renderCxHow() {
+  $('cxHow').innerHTML = `<p><b>Vina:</b> caixa de 20 Å centrada no ligante do cristal, exhaustiveness 32, 3 seeds. Os números da lista são a média do RMSD da pose 1 nas 3 execuções; o desenho usa a seed 1.</p>` +
+    `<p><b>DiffDock:</b> docking às cegas (sem informar o bolsão), 10 amostras, configuração padrão. Vale a pose de maior confiança.</p>` +
+    `<p><b>RMSD:</b> distância média entre os átomos pesados da pose prevista e os do ligante no cristal, sem realinhar. Até 2 Å conta como acerto.</p>` +
+    `<p><b>Cegos:</b> estruturas de EGFR por raios X publicadas desde 2022, com ligante de 18 a 70 átomos pesados ligado ao hinge e sem ligação covalente. Os critérios foram fixados antes de rodar (scripts/07_blind_select.py).</p>`;
+}
+
+async function ensureCx() {
+  if (!D) return;
+  if (!window.$3Dmol) { setAnswer($('cxNow'), 'warn', 'Sem 3D', 'A biblioteca 3D não carregou. Verifique a conexão.'); return; }
+  const E = cxEntries(); cxBanner(E); renderCxHow();
+  if (!CXS.pdb) { const first = E.find(e => !e.pending && !e.skipped); if (first) CXS.pdb = first.pdb; }
+  renderCxList(E); renderCxHead(E);
+  if (!CXS.pdb) return;
+  const C = CXS.cache[CXS.pdb];
+  const e = E.find(x => x.pdb === CXS.pdb), stale = C && e && e.group === 'blind' && (C.diffdock.length < 1 || C.vina.length < 1) && !e.pending;
+  if (!C || stale) await cxLoad(CXS.pdb, !C);
+  else if (CXS.viewer) { CXS.viewer.resize(); CXS.viewer.render(); }
+}
+async function cxPick(pdb) {
+  if (pdb === CXS.pdb) return;
+  cxStop(); CXS.anim = false; CXS.frames = null; CXS.pdb = pdb; CXS.ddRank = 1; CXS.vPose = 1;
+  const E = cxEntries(); renderCxList(E); renderCxHead(E);
+  await cxLoad(pdb, true);
+}
+async function cxLoad(pdb, reframe) {
+  let C;
+  try { C = await (await fetch('/api/cx?pdb=' + pdb)).json(); } catch (err) { C = null; }
+  if (pdb !== CXS.pdb) return;
+  if (!C) { $('cxInfo').innerHTML = '<span>Não foi possível montar este complexo (a estrutura do ligante não pôde ser reconstruída).</span>'; return; }
+  CXS.cache[pdb] = C;
+  if (!C.diffdock.some(p => p.rank === CXS.ddRank)) CXS.ddRank = (C.diffdock[0] || {}).rank || 1;
+  renderCxPoses(); cxDraw(reframe);
+}
+function cxFrame(kind) {
+  const v = CXS.viewer; if (!v) return;
+  if (kind === 'all') { v.zoomTo({ model: [CXS.ids.prot] }); v.zoom(1.1); }
+  else { v.zoomTo({ model: [CXS.ids.cry] }); v.zoom(0.62); }
+  v.render();
+}
+function cxDraw(reframe) {
+  const C = CXS.cache[CXS.pdb]; if (!C) return;
+  if (!CXS.viewer) CXS.viewer = $3Dmol.createViewer($('vcx'), { backgroundColor: '#0f1a21' });
+  const v = CXS.viewer, S = CXS.show; v.removeAllModels(); v.removeAllLabels(); CXS.hover = null;
+  const prot = v.addModel(C.protein, 'pdb'), cry = v.addModel(C.crystal, 'sdf');
+  CXS.ids = { prot: prot.getID(), cry: cry.getID(), dd: null, vina: null };
+  prot.setStyle({}, { cartoon: { color: '#7f929d', opacity: 0.5 } });
+  if (S.res) {
+    const lig = cry.selectedAtoms({}), near = new Set();
+    prot.selectedAtoms({}).forEach(a => { if (!near.has(a.resi) && lig.some(l => Math.hypot(l.x - a.x, l.y - a.y, l.z - a.z) <= 4.5)) near.add(a.resi); });
+    prot.setStyle({ resi: [...near] }, { cartoon: { color: '#7f929d', opacity: 0.5 }, stick: { radius: 0.1, colorscheme: 'greyCarbon' } });
+  }
+  cry.setStyle({}, S.cry ? { stick: { radius: 0.2, color: COL.cry } } : {});
+  if (CXS.anim && CXS.frames) {
+    const m = v.addModelsAsFrames(CXS.framesTxt, 'pdb'); m.setStyle({}, { stick: { radius: 0.22, color: COL.dd } }); CXS.ids.dd = m.getID(); v.setFrame(CXS.frame);
+  } else if (S.dd) {
+    const p = C.diffdock.find(x => x.rank === CXS.ddRank);
+    if (p) { const m = v.addModel(p.mol, 'sdf'); m.setStyle({}, { stick: { radius: 0.2, color: COL.dd } }); CXS.ids.dd = m.getID(); }
+  }
+  if (S.vina) {
+    const p = C.vina.find(x => x.pose === CXS.vPose);
+    if (p) { const m = v.addModel(p.mol, 'sdf'); m.setStyle({}, { stick: { radius: 0.2, color: COL.vina } }); CXS.ids.vina = m.getID(); }
+  }
+  v.setHoverable({}, true, a => {
+    if (CXS.hover) v.removeLabel(CXS.hover);
+    const t = a.model === CXS.ids.cry ? 'Cristal (real)' : a.model === CXS.ids.dd ? `DiffDock · posição ${CXS.ddRank}` : a.model === CXS.ids.vina ? `Vina · pose ${CXS.vPose}` : `${a.resn} ${a.resi}`;
+    CXS.hover = v.addLabel(t, { position: a, fontSize: 12, fontColor: '#e6edf0', backgroundColor: '#0a1116', backgroundOpacity: 0.85, borderColor: '#46586a', borderThickness: 1, inFront: true });
+  }, () => { if (CXS.hover) { v.removeLabel(CXS.hover); CXS.hover = null; } });
+  if (reframe || CXS.framed !== CXS.pdb) { CXS.framed = CXS.pdb; cxFrame('pocket'); } else v.render();
+}
+function cxStop() { clearInterval(CXS.timer); CXS.timer = null; if ($('cxPlay')) $('cxPlay').textContent = 'Ver o encaixe'; }
+function cxSetFrame(i) {
+  if (!CXS.viewer || !CXS.frames) return;
+  CXS.frame = i; $('cxStep').value = i; CXS.viewer.setFrame(i); CXS.viewer.render();
+  const C = CXS.cache[CXS.pdb], c = cen(CXS.frames[i]), d = Math.hypot(c[0] - C.center[0], c[1] - C.center[1], c[2] - C.center[2]);
+  $('cxLabel').textContent = `passo ${i + 1} de ${CXS.frames.length} · a ${d.toFixed(1)} Å do cristal`;
+}
+async function cxPlay() {
+  const C = CXS.cache[CXS.pdb]; if (!C || !C.has_traj) return;
+  if (CXS.timer) return cxStop();
+  if (!CXS.frames || CXS.framesRank !== CXS.ddRank) {
+    const j = await (await fetch(`/api/diffdock_vis?pdb=${CXS.pdb}&rank=${CXS.ddRank}`)).json();
+    if (!j.frames) { $('cxLabel').textContent = 'Sem trajetória salva para esta posição.'; return; }
+    CXS.framesTxt = j.frames; CXS.frames = parseFrames(j.frames); CXS.framesRank = CXS.ddRank;
+  }
+  CXS.anim = true; CXS.frame = 0; $('cxStep').disabled = false; $('cxStep').max = CXS.frames.length - 1; $('cxHint').textContent = 'o ligante em ciano parte de uma posição aleatória até o encaixe';
+  cxDraw(false); cxFrame('all'); cxSetFrame(0); $('cxPlay').textContent = 'Pausar';
+  CXS.timer = setInterval(() => { const n = CXS.frame + 1; if (n >= CXS.frames.length) return cxStop(); cxSetFrame(n); }, 350);
+}
+function cxLeaveAnim() { cxStop(); $('cxStep').disabled = true; if (CXS.anim) { CXS.anim = false; $('cxHint').textContent = 'arraste para girar · role para zoom · passe o mouse para ver nomes'; $('cxLabel').textContent = ''; } }
+
+document.addEventListener('click', e => {
+  const row = e.target.closest('.cxrow'); if (row && !row.disabled) return void cxPick(row.dataset.pdb);
+  const chip = e.target.closest('.pchip');
+  if (chip) {
+    const n = +chip.dataset.n;
+    if (chip.dataset.k === 'dd') { cxLeaveAnim(); CXS.ddRank = n; CXS.show.dd = true; } else { CXS.vPose = n; CXS.show.vina = true; }
+    renderCxPoses(); return cxDraw(false);
+  }
+  const lay = e.target.closest('[data-lay]');
+  if (lay && lay.closest('#t-cx')) { const k = lay.dataset.lay; CXS.show[k] = !CXS.show[k]; if (k === 'dd' && !CXS.show.dd) cxLeaveAnim(); renderCxPoses(); cxDraw(false); }
+});
+$('cxCamPocket').addEventListener('click', () => cxFrame('pocket'));
+$('cxCamAll').addEventListener('click', () => cxFrame('all'));
+$('cxPlay').addEventListener('click', cxPlay);
+$('cxStep').addEventListener('input', e => { cxStop(); if (CXS.anim) cxSetFrame(+e.target.value); });
+document.addEventListener('keydown', e => {
+  if (tab !== 'cx' || /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(e.target.tagName) || !CXS.pdb) return;
+  const C = CXS.cache[CXS.pdb]; if (!C || !C.diffdock.length) return;
+  const i = C.diffdock.findIndex(p => p.rank === CXS.ddRank);
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    e.preventDefault(); cxLeaveAnim(); CXS.ddRank = C.diffdock[(i + (e.key === 'ArrowRight' ? 1 : -1) + C.diffdock.length) % C.diffdock.length].rank;
+    renderCxPoses(); cxDraw(false);
+  }
+});
+
+function renderDock() {
+  const rows = D.docking;
+  $('drows').innerHTML = rows.slice().sort((a, b) => a.vina_score_kcal_mol - b.vina_score_kcal_mol)
+    .map(r => `<tr><td>${r.chembl_id}</td><td>${f2(r.vina_score_kcal_mol)}</td><td>${f2(r.pIC50)}</td><td>${r.ic50_nM >= 1000 ? Math.round(r.ic50_nM) : r.ic50_nM.toPrecision(3)}</td></tr>`).join('');
+  if (!rows.length) { $('scatter').textContent = 'Sem dados.'; return; }
+  const W = 420, H = 300, m = { l: 44, r: 12, t: 12, b: 38 };
+  const xs = rows.map(r => r.vina_score_kcal_mol), ys = rows.map(r => r.pIC50);
+  const x0 = Math.floor(Math.min(...xs)), x1 = Math.ceil(Math.max(...xs)), y0 = Math.floor(Math.min(...ys)), y1 = Math.ceil(Math.max(...ys));
+  const X = v => m.l + (W - m.l - m.r) * (v - x0) / (x1 - x0), Y = v => H - m.b - (H - m.t - m.b) * (v - y0) / (y1 - y0);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">`;
+  for (let v = x0; v <= x1; v++) s += `<line x1="${X(v)}" x2="${X(v)}" y1="${m.t}" y2="${H - m.b}" stroke="var(--line)"/><text x="${X(v)}" y="${H - m.b + 14}" text-anchor="middle">${v}</text>`;
+  for (let v = y0; v <= y1; v++) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`;
+  rows.forEach(r => s += `<circle cx="${X(r.vina_score_kcal_mol)}" cy="${Y(r.pIC50)}" r="5" fill="var(--docked)" opacity=".8"><title>${r.chembl_id}</title></circle>`);
+  s += `<text x="${(W + m.l) / 2}" y="${H - 4}" text-anchor="middle">score do Vina (kcal/mol)</text><text transform="translate(11 ${H / 2}) rotate(-90)" text-anchor="middle">pIC50</text></svg>`;
+  $('scatter').innerHTML = s;
+}
+
+const ROAD = [
+  ['Validar o protocolo em mais de um complexo', 'Sem acertar a pose de fármacos conhecidos, os scores de compostos novos não significam nada.', 'valid', 'em andamento'],
+  ['Montar um conjunto balanceado de ativos, inativos e decoys', 'Hoje os 16 compostos foram escolhidos pelo pIC50, sem controle negativo. Assim não dá para medir se o docking separa ativos de inativos.', null, 'pendente'],
+  ['Medir o desempenho: curva ROC, AUC e EF1%', 'Compara o ranking do docking com um controle simples, como o peso molecular. Se o controle empatar, o docking não agrega.', null, 'pendente'],
+  ['Corrigir a coleta do ChEMBL', 'A paginação atual pega só os primeiros 500 registros, sem ordenação, e mistura EGFR selvagem e mutante.', null, 'pendente'],
+  ['Melhorar o docking, se a validação pedir', 'Rever a preparação do receptor, a protonação, as águas conservadas; testar outro programa ou receptor flexível.', null, 'pendente'],
+  ['Fechar o projeto', 'Atualizar o README, remover os arquivos Zone.Identifier, adicionar licença e escrever o relatório com números verificados.', null, 'pendente']
+];
+function renderRoad() {
+  $('road').innerHTML = ROAD.map(([t, why, link, st], i) => `<li><span class="n">${i + 1}</span><span><b>${t}</b>${link ? ` <a href="#" data-tab="${link}">ver</a>` : ''}</span><span class="tag ${st === 'pendente' ? 'no' : 'run'}">${st}</span><span class="why">${why}</span></li>`).join('');
+}
+
+function ago(s) { return s < 5 ? 'agora' : s < 60 ? `há ${s} s` : s < 3600 ? `há ${Math.floor(s / 60)} min` : s < 86400 ? `há ${Math.floor(s / 3600)} h` : `há ${Math.floor(s / 86400)} d`; }
+function dur(s) { return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60} s`; }
+function toast(msg) { const el = $('toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 3500); }
+
+function renderRun(jobs) {
+  $('run').innerHTML = jobs.length
+    ? '<span>Em execução agora:</span>' + '<a href="#" data-tab="live">ver ao vivo</a>' + jobs.map(j => `<span class="job"><i class="pulse"></i>${j.name} · ${dur(j.seconds)}</span>`).join('')
+    : '<span class="job"><i class="idle"></i>Nenhuma análise rodando · painel ao vivo</span>';
+  updateBadges(jobs); setBar();
+}
+function renderAct() {
+  $('act').innerHTML = (D.activity || []).map(a => `<li><span class="f">${a.file}</span><span class="age">${ago(a.age)}</span></li>`).join('') || '<li>Sem arquivos ainda.</li>';
+}
+
+let lastStamp = null, busy = false;
+async function refresh(reason) {
+  if (busy) return; busy = true;
+  try {
+    const r = await fetch('/api/data'); D = await r.json();
+    renderGuia(); renderResumo(); renderValid(); renderDock(); renderAct(); renderRun(D.jobs);
+    if (tab === 'cx') ensureCx();
+    updateBadges();
+    document.querySelectorAll('.cx, #steps li, #facts .fact').forEach(e => { e.classList.remove('flash'); void e.offsetWidth; if (reason) e.classList.add('flash'); });
+    if (reason) toast('Atualizado: ' + reason);
+    $('live').textContent = 'ao vivo · ' + new Date().toLocaleTimeString('pt-BR');
+  } catch (e) { $('live').textContent = 'sem conexão com o servidor'; }
+  busy = false;
+}
+async function poll() {
+  try {
+    const v = await (await fetch('/api/version')).json();
+    if (D) renderRun(v.jobs);
+    if (lastStamp !== null && (v.stamp !== lastStamp)) {
+      await refresh((D && D.activity && D.activity[0]) ? 'novos resultados' : 'dados');
+      const top = D && D.activity && D.activity[0]; if (top) toast('Atualizado: ' + top.file);
+    }
+    lastStamp = v.stamp;
+    $('live').textContent = 'ao vivo · ' + new Date().toLocaleTimeString('pt-BR');
+  } catch (e) { $('live').textContent = 'sem conexão com o servidor'; }
+}
+function meter(label, val, max, unit) {
+  const pct = Math.min(100, 100 * val / max);
+  return `<div class="meter"><div class="l"><span>${label}</span><span>${val}${unit}</span></div><div class="t"><i style="width:${pct}%"></i></div></div>`;
+}
+let liveBusy = false;
+async function refreshLive() {
+  if (liveBusy || tab !== 'live') return; liveBusy = true;
+  try {
+    const L = await (await fetch('/api/live')).json();
+    setAnswer($('liveNow'), L.jobs.length ? 'warn' : 'ok', L.jobs.length ? 'Rodando' : 'Parado',
+      L.jobs.length ? `Há <b>${L.jobs.length}</b> análise(s) em andamento. Esta tela atualiza a cada 2 segundos.`
+                    : 'Nenhuma análise rodando agora. Quando você iniciar uma, ela aparece aqui.');
+    $('gpu').innerHTML = L.gpu
+      ? `<div class="note" style="margin-bottom:10px">${L.gpu.name}</div>` + meter('uso da GPU', L.gpu.util, 100, '%') +
+        meter('memória da GPU', L.gpu.mem_used, L.gpu.mem_total, ' MiB') + meter('temperatura', L.gpu.temp, 100, ' °C')
+      : '<span class="note">GPU não disponível neste ambiente.</span>';
+    $('liveJobs').innerHTML = L.jobs.map(j => `<li><span class="pulse"></span><span>${j.name}</span><span class="tag run">${dur(j.seconds)}</span></li>`).join('') || '<li><span class="note">Nada em execução.</span></li>';
+    $('consoles').innerHTML = L.logs.map(g => `<div class="box"><h3>${g.file} · atualizado ${ago(g.age)}</h3><pre class="con">${g.tail.join('\n').replace(/</g, '&lt;')}</pre></div>`).join('') ||
+      '<div class="box pad note">Nenhum log recente.</div>';
+    document.querySelectorAll('pre.con').forEach(p => p.scrollTop = p.scrollHeight);
+  } catch (e) { /* server briefly unavailable */ }
+  liveBusy = false;
+}
+setInterval(refreshLive, 2000);
+renderRoad();
+show((location.hash || '#cx').slice(1));
+refresh().then(() => poll());
+setInterval(poll, 2500);
+setInterval(() => { if (D) { renderAct(); } }, 15000);
+</script>
+</body>
+</html>

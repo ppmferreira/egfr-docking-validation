@@ -1,0 +1,27 @@
+/* Element-level defaults only. Classes live in each component's own CSS module. */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.55 var(--font-body); }
+h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+h2 { margin: 0; font-size: 16px; font-weight: 600; }
+
+a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; cursor: pointer; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--docked); outline-offset: -2px; }
+
+label { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 3px 6px; }
+input[type=checkbox] { accent-color: var(--docked); width: 15px; height: 15px; }
+input[type=range] { accent-color: var(--docked); }
+
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 8px 14px; text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { font: 500 11px var(--font-mono); color: var(--muted); letter-spacing: .04em; }
+td { font: 13px var(--font-mono); border-top: 1px solid var(--line); }
+
+svg text { fill: var(--muted); font: 11px var(--font-mono); }
+
+details { border-top: 1px solid var(--line); }
+details:first-of-type { border-top: 0; }
+summary { padding: 11px 14px; cursor: pointer; font-weight: 500; }
+details > div { padding: 0 14px 14px; color: var(--muted); max-width: 78ch; }
