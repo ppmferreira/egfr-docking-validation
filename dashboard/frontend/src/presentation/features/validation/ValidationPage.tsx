@@ -1,104 +1,97 @@
-import { assessValidation } from '../../../domain/benchmark'
+import { assessValidation, countHits, listComplexes, seedRuns } from '../../../domain/benchmark'
 import type { Dashboard } from '../../../domain/entities'
 import { classify } from '../../../domain/rmsd'
-import { groupBy, mean } from '../../../domain/stats'
 import { summarizeSweep } from '../../../domain/sweep'
 import { f2 } from '../../format'
 import { Answer } from '../../ui/Answer'
 import { Box, Pad } from '../../ui/Box'
 import { Page } from '../../ui/Layout'
-import { Tag } from '../../ui/Tag'
+import { PageSection } from '../../ui/PageSection'
 import { TableWrap } from '../../ui/TableWrap'
-import { Lead, Note } from '../../ui/Text'
-import { cn } from '../../ui/cn'
+import { Takeaway } from '../../ui/Takeaway'
+import { Note } from '../../ui/Text'
 import { tone } from '../../ui/tone'
-import { SweepChart, SweepProgress } from './SweepChart'
+import { SeedStrip } from './SeedStrip'
+import { SweepGrid } from './SweepGrid'
 
 export default function ValidationPage({ data }: { data: Dashboard }) {
   const v = assessValidation(data)
-  const byPdb = groupBy(data.diffdock, r => r.pdb)
-  const vinaOf = Object.fromEntries(v.ms.map(m => [m.pdb, m]))
-  const byBox = Object.entries(groupBy(data.multi.rows, r => `${r.pdb}|${r.ligand}|${r.box_A}`))
   const sweep = summarizeSweep(data.sweep.rows)
+  const runs = seedRuns(data).sort((a, b) => a.pdb.localeCompare(b.pdb) || a.box - b.box)
+  const train = listComplexes(data).filter(e => e.group === 'train' && e.dd !== null)
+  const hits = countHits(train)
+  const best = sweep.length ? sweep.reduce((a, b) => (b.mean < a.mean ? b : a)) : null
+  const worst = sweep.length ? Math.max(...sweep.map(s => s.mean)) : 0
+
   return (
-    <Page>
+    <Page className="gap-8">
       {!data.multi.rows.length
         ? <Answer kind="warn" chip="Rodando">Os testes em outros complexos ainda não produziram resultados.</Answer>
         : v.okAll
-          ? <Answer kind="ok" chip="Passou">A configuração de caixa 20 Å acertou em todos os complexos.</Answer>
+          ? <Answer kind="ok" chip="Passou">A configuração escolhida no erlotinibe acertou em todos os complexos.</Answer>
           : <Answer kind="fail" chip={v.complete ? 'Não passou' : 'Parcial'}>
-              Com a caixa de 20 Å, <b>{v.nOk} de {v.ms.length}</b> estruturas tiveram pelo menos 2 seeds acertando.{' '}
-              {v.complete ? 'O resultado no erlotinibe não se repete nos outros ligantes.' : `Faltam ${data.multi.total - data.multi.rows.length} execuções.`}
+              A configuração ajustada no erlotinibe (caixa de 20 Å) só acertou <b>{v.nOk} de {v.ms.length}</b> estruturas. {v.complete
+                ? 'O resultado do erlotinibe não se repete nos outros ligantes.'
+                : `Faltam ${data.multi.total - data.multi.rows.length} execuções.`}
             </Answer>}
 
-      <h2 className="m-0 text-base font-semibold">Vina contra DiffDock</h2>
-      <Lead>O mesmo teste nos mesmos complexos. O RMSD é a distância à pose do cristal, e vale a pose que cada método escolheria como a melhor (limite de 2 Å).</Lead>
-      <Box title="Pose escolhida por cada método">
-        <TableWrap><table className="data-table">
-          <thead><tr><th>Estrutura</th><th>Ligante</th><th>Vina RMSD Å</th><th>DiffDock RMSD Å</th><th>Melhor pose do DiffDock Å</th></tr></thead>
-          <tbody>
-            {Object.entries(byPdb).map(([pdb, a]) => {
-              const r1 = a.find(r => r.rank === 1) ?? a[0], best = a.reduce((x, y) => (y.rmsd < x.rmsd ? y : x)), m = vinaOf[pdb]
-              return (
-                <tr key={pdb}><td>{pdb}</td><td>{r1.ligand}</td>
-                  <td className={m ? tone(classify(m.mean)) : ''}>{m ? f2(m.mean) : '–'}</td>
-                  <td className={tone(classify(r1.rmsd))}>{f2(r1.rmsd)}</td><td>{f2(best.rmsd)} (posição {best.rank})</td></tr>
-              )
-            })}
-            {!data.diffdock.length && <tr><td colSpan={5}>Aguardando o DiffDock.</td></tr>}
-          </tbody>
-        </table></TableWrap>
-        {data.diffdock.length > 0 && <Pad><Note><b>Cuidado:</b> as estruturas 1M17, 4WKQ e 1XKK são antigas e provavelmente fazem parte dos dados de treino do DiffDock. O acerto aqui pode ser em parte memória do modelo. O teste que decide é com complexos publicados depois do treino dele.</Note></Pad>}
-      </Box>
+      <PageSection title="1. Qual configuração do Vina funciona melhor?"
+        intro={<>Testamos 14 combinações de tamanho da caixa de busca, exhaustiveness (esforço da busca) e águas do cristal, só no erlotinibe (1M17). Cada célula é a média de 3 seeds, e <b className="font-semibold text-ink">menor é melhor</b>: o número é a distância da pose 1 ao ligante do cristal, em Å.</>}>
+        {sweep.length > 0 ? (
+          <>
+            <Box title={data.sweep.done ? 'Varredura concluída' : `Em andamento: ${data.sweep.rows.length} de ${data.sweep.total} execuções`}>
+              <Pad><SweepGrid configs={sweep} /></Pad>
+            </Box>
+            {best && (
+              <Takeaway>
+                {best.mean <= 2
+                  ? <>A melhor configuração ficou em <b>{f2(best.mean)} Å</b>, dentro do limite de 2 Å.</>
+                  : <>Nenhuma configuração chegou a 2 Å na média. A melhor foi caixa de <b>{best.box} Å</b> com exhaustiveness <b>{best.exhaustiveness}</b> ({f2(best.mean)} Å) e a pior, {f2(worst)} Å. A média sofre porque uma seed errada, sozinha, puxa o valor para cima.</>}
+              </Takeaway>
+            )}
+          </>
+        ) : <Box padded><Note>Aguardando a varredura.</Note></Box>}
+      </PageSection>
 
-      <h2 className="m-0 text-base font-semibold">Outros complexos de EGFR (teste de generalização)</h2>
-      <Lead>O mesmo protocolo (caixa e exhaustiveness fixados antes) aplicado a outras estruturas cristalográficas. Cada cartão é uma estrutura com 3 seeds do Vina.</Lead>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-4">
-        {v.ms.map(m => (
-          <Box key={m.pdb} className="grid gap-1.5 p-3.5">
-            <div className="flex items-baseline justify-between gap-2"><b className="font-mono text-[15px] font-medium">{m.pdb}</b><Tag kind={m.pass >= 2 ? 'ok' : m.mean <= 3 ? 'run' : 'bad'}>{m.pass >= 2 ? 'acertou' : m.mean <= 3 ? 'quase' : 'errou'}</Tag></div>
-            <Note>{m.ligand}</Note>
-            <div className={cn('font-mono text-[26px] font-medium tracking-[-0.02em]', tone(classify(m.mean)))}>{f2(m.mean)} Å</div>
-            <Note>RMSD médio da pose 1 · {m.pass} de {m.n} seeds ≤ 2 Å</Note>
-          </Box>
-        ))}
-        {!v.ms.length && <Box padded><Note>Aguardando as primeiras execuções.</Note></Box>}
-      </div>
-      <Box title="Resultados por estrutura e caixa">
-        <TableWrap><table className="data-table">
-          <thead><tr><th>Estrutura</th><th>Ligante</th><th>Caixa Å</th><th>RMSD médio Å</th><th>Acertos</th><th>Melhor pose</th></tr></thead>
-          <tbody>
-            {byBox.map(([k, a]) => {
-              const [pdb, lig, box] = k.split('|'), m = mean(a.map(x => x.top_rmsd))
-              return (
-                <tr key={k}><td>{pdb}</td><td>{lig}</td><td>{box}</td><td className={tone(classify(m))}>{f2(m)}</td>
-                  <td>{a.filter(x => x.top_pass).length}/{a.length}</td>
-                  <td>{f2(mean(a.map(x => x.best_rmsd)))} Å, posição {mean(a.map(x => x.best_rank)).toFixed(1)}</td></tr>
-              )
-            })}
-            {!byBox.length && <tr><td colSpan={6}>Aguardando.</td></tr>}
-          </tbody>
-        </table></TableWrap>
-      </Box>
+      <PageSection title="2. A configuração escolhida repete o acerto em outros complexos?"
+        intro="Usamos a caixa de 20 Å (e exhaustiveness 32), fixadas antes do teste, em três estruturas de EGFR. Cada ponto é uma seed. Ponto verde dentro da faixa verde é uma seed que acertou."
+      >
+        {runs.length > 0 ? (
+          <>
+            <Box title="RMSD de cada seed do Vina"><Pad><SeedStrip runs={runs} /></Pad></Box>
+            <Takeaway>
+              Com a caixa de 20 Å, <b>{v.nOk} de {v.ms.length}</b> estruturas tiveram pelo menos 2 seeds acertando.{' '}
+              {v.ms.filter(m => m.pass < 2).map(m => `${m.pdb} ficou em ${f2(m.mean)} Å`).join(' e ')}{v.ms.some(m => m.pass < 2) && ': perto do limite, mas fora.'}
+            </Takeaway>
+          </>
+        ) : <Box padded><Note>Aguardando as primeiras execuções.</Note></Box>}
+      </PageSection>
 
-      <h2 className="m-0 text-base font-semibold">Varredura de parâmetros (só erlotinibe)</h2>
-      <Lead>Quais configurações do Vina aproximam a pose 1 do cristal. A linha tracejada marca o limite de 2 Å. Ajustar no mesmo caso que se quer validar pode enganar, por isso o teste acima.</Lead>
-      <Box title={data.sweep.done ? 'Varredura concluída' : `Varredura em andamento: ${data.sweep.rows.length} de ${data.sweep.total} execuções`}>
-        <SweepProgress done={data.sweep.rows.length} total={data.sweep.total} />
-      </Box>
-      {sweep.length > 0 && (
-        <>
-          <Box title="RMSD médio da pose 1, por configuração"><Pad><TableWrap><SweepChart configs={sweep} /></TableWrap></Pad></Box>
-          <Box title="Tabela da varredura">
-            <TableWrap><table className="data-table">
-              <thead><tr><th>Águas</th><th>Caixa Å</th><th>Exhaust.</th><th>Seeds</th><th>RMSD médio Å</th><th>Acertos</th><th>Melhor RMSD Å</th></tr></thead>
-              <tbody>{sweep.map((s, i) => (
-                <tr key={i}><td>{s.waters}</td><td>{s.box}</td><td>{s.exhaustiveness}</td><td>{s.n}</td><td className={tone(classify(s.mean))}>{f2(s.mean)}</td><td>{s.pass}/{s.n}</td><td>{f2(s.best)}</td></tr>
-              ))}</tbody>
-            </table></TableWrap>
-          </Box>
-        </>
-      )}
+      <PageSection title="3. E o DiffDock nos mesmos complexos?"
+        intro="O DiffDock não usa caixa nem ajuste: recebe a proteína e o ligante e propõe poses. Vale a pose que ele mesmo considera a melhor (maior confiança).">
+        <Box title="Pose escolhida por cada método">
+          <TableWrap><table className="data-table">
+            <thead><tr><th>Estrutura</th><th>Ligante</th><th>DiffDock Å</th><th>Vina Å (média das seeds)</th><th>Seeds do Vina ≤ 2 Å</th></tr></thead>
+            <tbody>
+              {train.map(e => (
+                <tr key={e.pdb}>
+                  <td>{e.pdb}</td><td>{e.lig}</td>
+                  <td className={tone(classify(e.dd!))}>{f2(e.dd)}</td>
+                  <td className={e.vina !== null ? tone(classify(e.vina)) : ''}>{e.vina !== null ? f2(e.vina) : '–'}</td>
+                  <td>{e.vpass !== null ? `${e.vpass} de ${e.vn}` : '–'}</td>
+                </tr>
+              ))}
+              {!train.length && <tr><td colSpan={5}>Aguardando o DiffDock.</td></tr>}
+            </tbody>
+          </table></TableWrap>
+        </Box>
+        {train.length > 0 && (
+          <>
+            <Takeaway>O DiffDock acertou <b>{hits.diffdock} de {hits.n}</b> e o Vina, <b>{hits.vina} de {hits.n}</b>.</Takeaway>
+            <Note className="max-w-[78ch]"><b>Cuidado:</b> 1M17, 4WKQ e 1XKK são antigas e provavelmente estão nos dados de treino do DiffDock, então o acerto dele pode ser em parte memória. O teste que decide é o cego, com estruturas publicadas depois do treino (tela Complexos).</Note>
+          </>
+        )}
+      </PageSection>
     </Page>
   )
 }

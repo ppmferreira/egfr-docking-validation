@@ -13,6 +13,16 @@ export function summarizeVina(d: Dashboard): VinaSummary[] {
   }))
 }
 
+/** The Vina seeds of one structure docked with one box size. */
+export interface SeedRun { pdb: string; ligand: string; box: number; rmsds: number[]; pass: number }
+
+export function seedRuns(d: Dashboard): SeedRun[] {
+  return Object.values(groupBy(d.multi.rows, r => `${r.pdb}|${r.box_A}`)).map(a => ({
+    pdb: a[0].pdb, ligand: a[0].ligand, box: a[0].box_A,
+    rmsds: [...a].sort((x, y) => x.seed - y.seed).map(x => x.top_rmsd), pass: a.filter(x => x.top_pass).length,
+  }))
+}
+
 /** Did the protocol validated on erlotinib hold on the other complexes? A structure passes with 2 of 3 seeds. */
 export function assessValidation(d: Dashboard) {
   const ms = summarizeVina(d)

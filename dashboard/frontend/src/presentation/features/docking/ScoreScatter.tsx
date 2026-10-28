@@ -1,22 +1,40 @@
+import { CartesianGrid, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts'
 import type { DockRow } from '../../../domain/entities'
+import { f2 } from '../../format'
 
-const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => a + i)
+const AXIS = { fill: 'var(--muted)', fontSize: 11 }
 
-/** Vina score against measured pIC50 for the 16 docked compounds. */
-export function ScoreScatter({ rows }: { rows: DockRow[] }) {
-  if (!rows.length) return <>Sem dados.</>
-  const W = 420, H = 300, m = { l: 44, r: 12, t: 12, b: 38 }
-  const xs = rows.map(r => r.vina_score_kcal_mol), ys = rows.map(r => r.pIC50)
-  const x0 = Math.floor(Math.min(...xs)), x1 = Math.ceil(Math.max(...xs)), y0 = Math.floor(Math.min(...ys)), y1 = Math.ceil(Math.max(...ys))
-  const X = (v: number) => m.l + (W - m.l - m.r) * (v - x0) / (x1 - x0)
-  const Y = (v: number) => H - m.b - (H - m.t - m.b) * (v - y0) / (y1 - y0)
+function Tip({ active, payload }: { active?: boolean; payload?: { payload: DockRow }[] }) {
+  const r = active && payload?.[0]?.payload
+  if (!r) return null
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: W }}>
-      {range(x0, x1).map(v => <g key={`x${v}`}><line x1={X(v)} x2={X(v)} y1={m.t} y2={H - m.b} stroke="var(--line)" /><text x={X(v)} y={H - m.b + 14} textAnchor="middle">{v}</text></g>)}
-      {range(y0, y1).map(v => <g key={`y${v}`}><line x1={m.l} x2={W - m.r} y1={Y(v)} y2={Y(v)} stroke="var(--line)" /><text x={m.l - 6} y={Y(v) + 4} textAnchor="end">{v}</text></g>)}
-      {rows.map(r => <circle key={r.chembl_id} cx={X(r.vina_score_kcal_mol)} cy={Y(r.pIC50)} r={5} fill="var(--docked)" opacity={0.8}><title>{r.chembl_id}</title></circle>)}
-      <text x={(W + m.l) / 2} y={H - 4} textAnchor="middle">score do Vina (kcal/mol)</text>
-      <text transform={`translate(11 ${H / 2}) rotate(-90)`} textAnchor="middle">pIC50</text>
-    </svg>
+    <div className="rounded-lg border border-line bg-panel px-3 py-2 text-[12px] shadow-md">
+      <div className="font-mono font-semibold">{r.chembl_id}</div>
+      <div className="text-muted">score do Vina {f2(r.vina_score_kcal_mol)} kcal/mol</div>
+      <div className="text-muted">pIC50 {f2(r.pIC50)} (IC50 {r.ic50_nM >= 1000 ? Math.round(r.ic50_nM) : r.ic50_nM.toPrecision(3)} nM)</div>
+    </div>
+  )
+}
+
+/** Vina score against measured pIC50. The score axis is flipped so that "better" is up and to the right on both axes:
+ *  a scoring function that works would put the dots along the rising diagonal. */
+export function ScoreScatter({ rows }: { rows: DockRow[] }) {
+  const xs = rows.map(r => r.vina_score_kcal_mol), ys = rows.map(r => r.pIC50)
+  const xd: [number, number] = [Math.floor(Math.min(...xs)), Math.ceil(Math.max(...xs))]
+  const yd: [number, number] = [Math.floor(Math.min(...ys)), Math.ceil(Math.max(...ys))]
+  return (
+    <div className="h-[340px]" role="img" aria-label="Score do Vina contra pIC50 medido, 16 compostos">
+      <ResponsiveContainer width="100%" height="100%">
+        <ScatterChart margin={{ top: 10, right: 16, bottom: 28, left: 4 }}>
+          <CartesianGrid stroke="var(--line)" />
+          <XAxis type="number" dataKey="vina_score_kcal_mol" reversed domain={xd} tickCount={xd[1] - xd[0] + 1} allowDecimals={false} tick={AXIS} stroke="var(--line)"
+            label={{ value: '← pior   score do Vina (kcal/mol)   melhor →', position: 'bottom', offset: 8, fill: 'var(--muted)', fontSize: 11 }} />
+          <YAxis type="number" dataKey="pIC50" domain={yd} tickCount={yd[1] - yd[0] + 1} allowDecimals={false} tick={AXIS} stroke="var(--line)" width={44}
+            label={{ value: 'potência medida (pIC50) →', angle: -90, position: 'insideLeft', fill: 'var(--muted)', fontSize: 11 }} />
+          <Tooltip cursor={{ strokeDasharray: '3 3', stroke: 'var(--muted)' }} content={<Tip />} />
+          <Scatter data={rows} fill="var(--docked)" fillOpacity={0.85} isAnimationActive={false} />
+        </ScatterChart>
+      </ResponsiveContainer>
+    </div>
   )
 }

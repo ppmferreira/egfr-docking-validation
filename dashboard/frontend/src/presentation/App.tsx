@@ -49,7 +49,7 @@ export default function App() {
       case 'valid': return <ValidationPage data={data} />
       case 'dock': return <DockingPage data={data} />
       case 'enrich': return <EnrichmentPage data={data} />
-      case 'chem': return <ChemPage />
+      case 'chem': return <ChemPage data={data} />
       case 'guia': return <GuidePage data={data} onGo={go} />
       case 'resumo': return <SummaryPage data={data} onGo={go} />
       case 'next': return <RoadmapPage data={data} onGo={go} />
