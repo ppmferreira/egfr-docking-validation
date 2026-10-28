@@ -67,6 +67,10 @@ python scripts/04_docking.py
 
 **Before interpreting rankings, add a redocking validation:** remove the bound erlotinib from 1M17, prepare that ligand while preserving/reconstructing valid chemistry, dock it back, and compare the predicted pose to the crystallographic pose by an appropriate heavy-atom RMSD with chemically correct atom mapping (e.g. a commonly used working criterion is approximately 2 Å). Do not claim the protocol is validated until you have actually performed this test and documented its result. Docking known actives to their own target is a retrospective demonstration, not an independent prediction of novel actives.
 
+## Documentation
+
+Project documentation (overview, methodology, results, limitations) is in [`docs/`](docs/README.md).
+
 ## Dashboard
 
 A React + FastAPI dashboard to browse complexes, poses and results lives in [`dashboard/`](dashboard/README.md).
